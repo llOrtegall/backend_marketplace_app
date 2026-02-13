@@ -1,0 +1,62 @@
+---
+import type { Session } from "@auth/core/types";
+import { LogOut } from "@lucide/astro";
+import { Auth, SignIn, SignOut } from "auth-astro/components";
+---
+
+<Auth>
+  {
+    (session: Session) => (
+      <>
+        {session ? (
+          <SignOut
+            class={
+              " flex items-center px-4 py-2 gap-2 bg-red-800 text-white rounded-md shadow cursor-pointer hover:bg-red-700 transition-colors duration-200"
+            }
+          >
+            <LogOut class="size-5" />
+            Cerrar sesión
+          </SignOut>
+        ) : (
+          <SignIn
+            provider="google"
+            class={
+              "flex items-center px-4 py-2 gap-2 bg-slate-950 text-white rounded-md shadow cursor-pointer hover:bg-slate-800 transition-colors duration-200"
+            }
+          >
+            <figure class="size-5">
+              <svg
+                viewBox="0 0 18 18"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                aria-hidden="true"
+                focusable="false"
+                shape-rendering="geometricPrecision"
+                preserveAspectRatio="xMidYMid meet"
+              >
+                <path
+                  d="M17.64 9.2045c0-.638-.0573-1.2518-.1636-1.8409H9v3.4818h4.8436c-.2087 1.125-.8427 2.0782-1.7964 2.7155v2.2582h2.9091C16.6582 14.2523 17.64 11.9455 17.64 9.2045z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M9 18c2.43 0 4.4673-.8055 5.9564-2.1809l-2.9091-2.2582c-.8055.54-1.8368.8591-3.0473.8591-2.3441 0-4.3282-1.5832-5.0373-3.71H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M3.9627 10.71C3.7827 10.17 3.6818 9.5932 3.6818 9s.1009-1.17.2809-1.71V4.9582H.9573C.3477 6.1732 0 7.5491 0 9s.3477 2.8268.9573 4.0418L3.9627 10.71z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.3459l2.5813-2.5814C13.4632.8918 11.4268 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.9627 7.29C4.6718 5.1632 6.6559 3.5795 9 3.5795z"
+                  fill="#EA4335"
+                />
+              </svg>
+            </figure>
+            Continuar con Google
+          </SignIn>
+        )}
+      </>
+    )
+  }
+</Auth>

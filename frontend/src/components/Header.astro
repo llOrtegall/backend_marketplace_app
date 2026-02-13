@@ -1,0 +1,27 @@
+---
+import { Store } from "@lucide/astro";
+import MiniCart from "./MiniCart";
+import AuthComponent from "../components/AuthComponent.astro";
+---
+
+<section class="text-center font-medium text-[12px] bg-gray-200 py-1 uppercase">
+  Envíos gratis por compras superiores a $40.000 aplica para (Cali - Palmira -
+  Yumbo - La Cumbre y Vijes) - envíos a todo el país costo adicional
+</section>
+<header class="flex items-center">
+  <figure>
+    <Store />
+  </figure>
+  <h1>Bienvenido Aidee Store</h1>
+
+  <nav>
+    <ul class="flex items-center gap-2">
+      <li><a href="/">Home</a></li>
+      <li><a href="/about">About</a></li>
+      <li><a href="/contact">Contact</a></li>
+    </ul>
+  </nav>
+  <MiniCart />
+
+  <AuthComponent />
+</header>

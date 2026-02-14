@@ -1,6 +1,8 @@
 ---
 import { Store } from "@lucide/astro";
 import MiniCart from "./MiniCart";
+
+import { LoginButton } from "./LoginButton.tsx";
 ---
 
 <section class="text-center font-medium text-[12px] bg-gray-200 py-1 uppercase">
@@ -21,4 +23,6 @@ import MiniCart from "./MiniCart";
     </ul>
   </nav>
   <MiniCart />
+
+  <LoginButton client:load />
 </header>

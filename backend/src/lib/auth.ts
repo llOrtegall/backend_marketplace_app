@@ -6,6 +6,7 @@ export const auth = betterAuth({
   trustedOrigins: [process.env.FRONTEND_ORIGIN ?? "http://localhost:5173"],
   database: new Pool({
     connectionString: process.env.DATABASE_URL,
+    options: `-c search_path=${process.env.DATABASE_SCHEMA}`,
   }),
   emailAndPassword: {
     enabled: true,

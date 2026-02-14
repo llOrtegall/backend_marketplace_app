@@ -3,11 +3,13 @@ import { StrictMode } from 'react'
 import axios from 'axios'
 import './index.css'
 
-axios.defaults.baseURL = 'http://localhost:4000/api/v1'
+import Header from './components/Header'
+
+axios.defaults.baseURL = 'http://localhost:3000/api/v1'
 axios.defaults.withCredentials = true
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <div className="text-center text-2xl font-bold">test</div>
+    <Header />
   </StrictMode>,
 )

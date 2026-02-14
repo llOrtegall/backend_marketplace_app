@@ -2,7 +2,7 @@
 import { Store } from "@lucide/astro";
 import MiniCart from "./MiniCart";
 
-import { LoginButton } from "./LoginButton.tsx";
+import { AuthSessionComponent } from "./AuthSession.tsx";
 ---
 
 <section class="text-center font-medium text-[12px] bg-gray-200 py-1 uppercase">
@@ -24,5 +24,5 @@ import { LoginButton } from "./LoginButton.tsx";
   </nav>
   <MiniCart />
 
-  <LoginButton client:load />
+  <AuthSessionComponent />
 </header>

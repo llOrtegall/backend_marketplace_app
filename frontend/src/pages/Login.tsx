@@ -61,7 +61,7 @@ export default function Login() {
       const result = await signIn.email({
         email: parsedForm.data.email.trim().toLowerCase(),
         password: parsedForm.data.password,
-        callbackURL: "http://localhost:5173/",
+        callbackURL: "http://localhost:5173/?auth=success",
       });
 
       if (result.error) {
@@ -69,7 +69,7 @@ export default function Login() {
         return;
       }
 
-      navigate("/");
+      navigate("/?auth=success");
     } catch {
       toast.error("Ocurrió un error inesperado. Intenta nuevamente.");
     } finally {
@@ -84,7 +84,7 @@ export default function Login() {
 
         <button
           type="button"
-          onClick={() => signIn.social({ provider: "google", callbackURL: "http://localhost:5173/" })}
+          onClick={() => signIn.social({ provider: "google", callbackURL: "http://localhost:5173/?auth=success" })}
           className="w-full flex items-center justify-center space-x-2 border border-gray-300 rounded-md py-2 mb-6 hover:bg-gray-100 transition-colors cursor-pointer"
         >
           <figure className="flex items-center space-x-2 size-6">

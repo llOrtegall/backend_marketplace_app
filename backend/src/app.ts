@@ -26,6 +26,13 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/v1", apiRouter);
 
+app.get("/api/auth/error", (req, res) => {
+  const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
+  const errorCode = Array.isArray(req.query.error) ? req.query.error[0] : req.query.error;
+  const authStatus = errorCode === "access_denied" ? "cancelled" : "error";
+  res.redirect(`${frontendOrigin}/?auth=${authStatus}`);
+});
+
 app.all("/api/auth/{*any}", toNodeHandler(auth));
 
 app.use((_req, res) => {

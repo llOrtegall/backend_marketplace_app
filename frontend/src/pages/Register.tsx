@@ -81,7 +81,7 @@ export default function Register() {
         name: fullName,
         email: parsedForm.data.email.trim().toLowerCase(),
         password: parsedForm.data.password,
-        callbackURL: "http://localhost:5173/",
+        callbackURL: "http://localhost:5173/?auth=success",
       });
 
       if (result.error) {
@@ -89,7 +89,7 @@ export default function Register() {
         return;
       }
 
-      navigate("/");
+      navigate("/?auth=success");
     } catch {
       toast.error("Ocurrió un error inesperado. Intenta nuevamente.");
     } finally {

@@ -1,11 +1,12 @@
-import { signIn, signOut, useSession } from "@/lib/auth-client";
+import { useSession, signOut } from "@/lib/auth-client";
+import { Link } from "react-router";
 import { useState } from "react";
 
 export default function Header() {
-  const { data, error } = useSession();
   const [searchQuery, setSearchQuery] = useState("");
+  const { data } = useSession();
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Implement search logic here, e.g., navigate to search results page
     console.log("Searching for:", searchQuery);
@@ -15,18 +16,13 @@ export default function Header() {
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
         {/* Logo and Brand */}
-        <div className="flex items-center space-x-2">
-          <h1 className="text-2xl font-light text-gray-800">Aide Store</h1>
-        </div>
+        <figure className="flex items-center space-x-2">
+          <img src="/src/assets/logo.png" width={120} height={80} alt="Logo de la Tienda" />
+        </figure>
 
         {/* Navigation */}
         <nav className="hidden md:flex">
           <ul className="flex space-x-8">
-            <li>
-              <a href="/" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium">
-                Inicio
-              </a>
-            </li>
             <li>
               <a href="/products/beauty" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium">
                 Belleza
@@ -35,20 +31,6 @@ export default function Header() {
             <li>
               <a href="/products/crafts" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium">
                 Artesanías
-              </a>
-            </li>
-            <li>
-              <a href="/cart" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium relative">
-                Carrito
-                {/* Add cart item count if available */}
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  0
-                </span>
-              </a>
-            </li>
-            <li>
-              <a href="/profile" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium">
-                Perfil
               </a>
             </li>
           </ul>
@@ -73,36 +55,25 @@ export default function Header() {
           </div>
         </form>
 
-        {/* User Section */}
         <section className="flex items-center space-x-4">
-          {error && <p className="text-red-500 text-sm">{error.message}</p>}
-          {!data ? (
-            <button
-              onClick={() => signIn.social({
-                provider: "google",
-                callbackURL: `${window.location.origin}/`,
-                errorCallbackURL: `${window.location.origin}/`,
-              })}
-              className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
-            >
-              Iniciar Sesión
-            </button>
-          ) : (
-            <div className="flex items-center space-x-3">
-              <span className="hidden sm:block text-sm text-gray-700">Hola, {data.user.name}</span>
-              <img
-                src={data.user.image || '/default-avatar.png'}
-                alt="Avatar de Usuario"
-                className="w-8 h-8 rounded-full border border-gray-300"
-              />
-              <button
-                onClick={() => signOut()}
-                className="text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          )}
+          {
+            data?.user ? (
+              <>
+                <img src={data.user.image || '/src/assets/default-avatar.png'} alt="Avatar del usuario" className="w-8 h-8 rounded-full object-cover" />
+                <span className="text-gray-700 font-medium">{data.user.name}</span>
+                <button
+                  onClick={() => signOut()}
+                  className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium cursor-pointer"
+                >
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
+              <Link to="/login" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium">
+                Iniciar sesión
+              </Link>
+            )
+          }
         </section>
 
         {/* Mobile Menu Button */}

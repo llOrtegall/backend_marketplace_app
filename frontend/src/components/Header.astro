@@ -1,7 +1,5 @@
 ---
 import { Store } from "@lucide/astro";
-import MiniCart from "./MiniCart";
-
 import { AuthSessionComponent } from "./AuthSession.tsx";
 ---
 
@@ -22,7 +20,8 @@ import { AuthSessionComponent } from "./AuthSession.tsx";
       <li><a href="/contact">Contact</a></li>
     </ul>
   </nav>
-  <MiniCart />
 
-  <AuthSessionComponent />
+  <div class="grid gap-2">
+    <AuthSessionComponent client:idle />
+  </div>
 </header>

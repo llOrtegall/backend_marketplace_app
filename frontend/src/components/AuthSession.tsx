@@ -1,24 +1,34 @@
-import { createAuthClient } from "better-auth/react";
+import { signIn, signOut, authClient } from "../lib/auth-client";
+
 
 export function AuthSessionComponent() {
-  const { useSession, signIn, signOut } = createAuthClient();
-  const { data } = useSession();
+  const { data } = authClient.useSession();
 
   return (
-    <section>
-      {JSON.stringify(data)}
-
-      <form>
+    <section className="border rounded p-2 text-sm">
+      {data ? (
+        <>
+          <p>Hola, {data.user.name}</p>
+          <button
+            type="button"
+            onClick={async () => {
+              await signOut();
+            }}
+          >
+            Sign Out
+          </button>
+        </>
+      ) : (
         <button
           type="button"
-          onClick={() => signIn.social({ provider: "google" })}
+          onClick={async () => {
+            await signIn.social({ provider: "google", callbackURL: "/" });
+          }}
         >
           Sign In with Google
         </button>
-        <button type="button" onClick={() => signOut()}>
-          Sign Out
-        </button>
-      </form>
+      )
+      }
     </section>
   );
 }

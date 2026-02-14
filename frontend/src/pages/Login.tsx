@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router";
+import { z, treeifyError } from "zod";
 import { useState } from "react";
 import { toast } from "sonner";
-import { z } from "zod";
 
 import { signIn } from "@/lib/auth-client";
 import { Eye, EyeClosed } from "lucide-react";
@@ -45,13 +45,13 @@ export default function Login() {
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.ChangeEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const parsedForm = loginSchema.safeParse(formValues);
     if (!parsedForm.success) {
-      const errors = parsedForm.error.flatten().fieldErrors;
-      toast.error(errors.email?.[0] ?? errors.password?.[0] ?? "Datos inválidos");
+      const errors = treeifyError(parsedForm.error);
+      toast.error(errors.errors?.[0] ?? errors.errors?.[0] ?? "Datos inválidos");
       return;
     }
 

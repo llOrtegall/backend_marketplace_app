@@ -41,6 +41,17 @@ All commands are run from the root of the project, from a terminal:
 | `bun astro ...`       | Run CLI commands like `astro add`, `astro check` |
 | `bun astro -- --help` | Get help using the Astro CLI                     |
 
+## 🚀 Production (VPS + Reverse Proxy)
+
+- Build SSR app: `bun run build`
+- Start Node server: `bun run start`
+- Internal bind for reverse proxy: `HOST=127.0.0.1 PORT=4321 bun run start`
+- Required auth env in production:
+	- `BETTER_AUTH_BASE_URL=https://your-domain.com`
+	- `BETTER_AUTH_SECRET=...`
+	- `GOOGLE_CLIENT_ID=...`
+	- `GOOGLE_CLIENT_SECRET=...`
+
 ## 👀 Want to learn more?
 
 Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).

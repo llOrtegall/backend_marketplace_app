@@ -1,9 +1,70 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
+import { z } from "zod";
+
 import { signIn } from "@/lib/auth-client";
 
+const loginSchema = z.object({
+  email: z.email("Correo electrónico inválido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+const initialFormValues: LoginFormValues = {
+  email: "",
+  password: "",
+};
+
 export default function Login() {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formValues, setFormValues] = useState<LoginFormValues>(initialFormValues);
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const handleInputChange = (field: keyof LoginFormValues) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
+    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
+    setSubmitError(null);
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError(null);
+
+    const parsedForm = loginSchema.safeParse(formValues);
+    if (!parsedForm.success) {
+      const errors = parsedForm.error.flatten().fieldErrors;
+      setFieldErrors({
+        email: errors.email?.[0],
+        password: errors.password?.[0],
+      });
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const result = await signIn.email({
+        email: parsedForm.data.email.trim().toLowerCase(),
+        password: parsedForm.data.password,
+        callbackURL: "http://localhost:5173/",
+      });
+
+      if (result.error) {
+        setSubmitError(result.error.message ?? "No se pudo iniciar sesión. Intenta nuevamente.");
+        return;
+      }
+
+      navigate("/");
+    } catch {
+      setSubmitError("Ocurrió un error inesperado. Intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center bg-white px-4">
@@ -27,7 +88,7 @@ export default function Login() {
           <span className="border-t border-gray-300 grow"></span>
         </div>
 
-        <form className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-1">Correo electrónico</label>
             <input
@@ -36,8 +97,11 @@ export default function Login() {
               placeholder="Ingresar correo electrónico"
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black"
               autoComplete="email"
+              value={formValues.email}
+              onChange={handleInputChange("email")}
               required
             />
+            {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium mb-1">Contraseña</label>
@@ -48,6 +112,8 @@ export default function Login() {
                 placeholder="Ingresar contraseña"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-black pr-10"
                 autoComplete="current-password"
+                value={formValues.password}
+                onChange={handleInputChange("password")}
                 required
               />
               <button
@@ -68,15 +134,18 @@ export default function Login() {
                 )}
               </button>
             </div>
+            {fieldErrors.password && <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>}
           </div>
           <div className="flex justify-end">
             <Link to="/forgot-password" className="text-xs underline font-medium text-black">¿Olvidaste tu contraseña?</Link>
           </div>
+          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
           <button
             type="submit"
-            className="w-full cursor-pointer bg-black text-white font-semibold py-2 rounded-md mt-2 hover:bg-gray-900 transition-colors"
+            className="w-full cursor-pointer bg-black text-white font-semibold py-2 rounded-md mt-2 hover:bg-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={isSubmitting}
           >
-            Iniciar sesión
+            {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
           </button>
         </form>
         <div className="my-8 border-t border-gray-200"></div>

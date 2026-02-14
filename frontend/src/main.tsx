@@ -13,6 +13,6 @@ axios.defaults.withCredentials = true
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <RouterProvider router={router} />
-    <Toaster />
+    <Toaster position='top-right' visibleToasts={3} richColors />
   </StrictMode>,
 )

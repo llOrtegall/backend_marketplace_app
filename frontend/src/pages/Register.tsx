@@ -1,8 +1,10 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { useState } from "react";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import { signUp } from "@/lib/auth-client";
+import { Eye, EyeClosed } from "lucide-react";
 
 const registerSchema = z
   .object({
@@ -38,29 +40,35 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<RegisterFormValues>(initialFormValues);
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof RegisterFormValues, string>>>({});
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleInputChange = (field: keyof RegisterFormValues) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormValues((prev) => ({ ...prev, [field]: event.target.value }));
-    setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
-    setSubmitError(null);
+  };
+
+  const preventClipboardAction = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+  };
+
+  const preventClipboardShortcuts = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const key = event.key.toLowerCase();
+    const usesCtrlOrMeta = event.ctrlKey || event.metaKey;
+
+    const isBlockedShortcut =
+      (usesCtrlOrMeta && ["c", "v", "x", "insert"].includes(key)) ||
+      (event.shiftKey && ["insert", "delete"].includes(key));
+
+    if (isBlockedShortcut) {
+      event.preventDefault();
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitError(null);
 
     const parsedForm = registerSchema.safeParse(formValues);
     if (!parsedForm.success) {
       const errors = parsedForm.error.flatten().fieldErrors;
-      setFieldErrors({
-        firstName: errors.firstName?.[0],
-        lastName: errors.lastName?.[0],
-        email: errors.email?.[0],
-        password: errors.password?.[0],
-        confirmPassword: errors.confirmPassword?.[0],
-      });
+      toast.error(errors.firstName?.[0] ?? errors.lastName?.[0] ?? errors.email?.[0] ?? errors.password?.[0] ?? errors.confirmPassword?.[0] ?? "Datos inválidos");
       return;
     }
 
@@ -77,13 +85,13 @@ export default function Register() {
       });
 
       if (result.error) {
-        setSubmitError(result.error.message ?? "No se pudo crear la cuenta. Intenta nuevamente.");
+        toast.error(result.error.message ?? "No se pudo crear la cuenta. Intenta nuevamente.");
         return;
       }
 
       navigate("/");
     } catch {
-      setSubmitError("Ocurrió un error inesperado. Intenta nuevamente.");
+      toast.error("Ocurrió un error inesperado. Intenta nuevamente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -105,7 +113,6 @@ export default function Register() {
               onChange={handleInputChange("firstName")}
               required
             />
-            {fieldErrors.firstName && <p className="mt-1 text-sm text-red-600">{fieldErrors.firstName}</p>}
           </div>
           <div>
             <label htmlFor="apellido" className="block text-sm font-medium mb-1">Apellido</label>
@@ -118,7 +125,6 @@ export default function Register() {
               onChange={handleInputChange("lastName")}
               required
             />
-            {fieldErrors.lastName && <p className="mt-1 text-sm text-red-600">{fieldErrors.lastName}</p>}
           </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium mb-1">Correo electrónico</label>
@@ -132,7 +138,6 @@ export default function Register() {
               onChange={handleInputChange("email")}
               required
             />
-            {fieldErrors.email && <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>}
           </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium mb-1">Ingresa tu contraseña</label>
@@ -145,6 +150,10 @@ export default function Register() {
                 autoComplete="new-password"
                 value={formValues.password}
                 onChange={handleInputChange("password")}
+                onCopy={preventClipboardAction}
+                onCut={preventClipboardAction}
+                onPaste={preventClipboardAction}
+                onKeyDown={preventClipboardShortcuts}
                 required
               />
               <button
@@ -154,12 +163,13 @@ export default function Register() {
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c0 3.866-4.477 7-10 7S2 15.866 2 12 6.477 5 12 5s10 3.134 10 7z" />
-                </svg>
+                {showPassword ? (
+                  <Eye className="w-5 h-5" />
+                ) : (
+                  <EyeClosed className="w-5 h-5" />
+                )}
               </button>
             </div>
-            {fieldErrors.password && <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>}
           </div>
           <div>
             <label htmlFor="confirm-password" className="block text-sm font-medium mb-1">Confirma tu contraseña</label>
@@ -172,6 +182,10 @@ export default function Register() {
                 autoComplete="new-password"
                 value={formValues.confirmPassword}
                 onChange={handleInputChange("confirmPassword")}
+                onCopy={preventClipboardAction}
+                onCut={preventClipboardAction}
+                onPaste={preventClipboardAction}
+                onKeyDown={preventClipboardShortcuts}
                 required
               />
               <button
@@ -181,14 +195,14 @@ export default function Register() {
                 onClick={() => setShowConfirmPassword((v) => !v)}
                 aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0c0 3.866-4.477 7-10 7S2 15.866 2 12 6.477 5 12 5s10 3.134 10 7z" />
-                </svg>
+                {showConfirmPassword ? (
+                  <Eye className="w-5 h-5" />
+                ) : (
+                  <EyeClosed className="w-5 h-5" />
+                )}
               </button>
             </div>
-            {fieldErrors.confirmPassword && <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>}
           </div>
-          {submitError && <p className="text-sm text-red-600">{submitError}</p>}
           <button
             type="submit"
             className="w-full cursor-pointer bg-black text-white font-semibold py-2 rounded-md mt-4 hover:bg-gray-900 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"

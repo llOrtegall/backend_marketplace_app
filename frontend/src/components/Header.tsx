@@ -37,7 +37,11 @@ export default function Header() {
           {error && <p className="text-red-500">{error.message}</p>}
           {!data ? (
             <button
-              onClick={() => signIn.social({ provider: "google" })}
+              onClick={() => signIn.social({
+                provider: "google",
+                callbackURL: `${window.location.origin}/`,
+                errorCallbackURL: `${window.location.origin}/`,
+              })}
               className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
               Sign In

@@ -3,13 +3,14 @@ import { StrictMode } from 'react'
 import axios from 'axios'
 import './index.css'
 
-import Header from './components/Header'
+import { RouterProvider } from 'react-router'
+import { router } from './routes'
 
 axios.defaults.baseURL = 'http://localhost:3000/api/v1'
 axios.defaults.withCredentials = true
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Header />
+    <RouterProvider router={router} />
   </StrictMode>,
 )

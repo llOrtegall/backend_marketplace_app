@@ -33,7 +33,6 @@ export default function Header() {
         </nav>
 
         <section>
-          {JSON.stringify(data)}
           {error && <p className="text-red-500">{error.message}</p>}
           {!data ? (
             <button
@@ -47,12 +46,22 @@ export default function Header() {
               Sign In
             </button>
           ) : (
-            <button
-              onClick={() => signOut()}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Sign Out
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="mr-4">Hello, {data.user.name}</span>
+              <figure>
+                <img
+                  src={data.user.image || 'default-avatar.png'}
+                  alt="User Avatar"
+                  className="w-8 h-8 rounded-full inline-block"
+                />
+              </figure>
+              <button
+                onClick={() => signOut()}
+                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Sign Out
+              </button>
+            </div>
           )}
         </section>
       </div>

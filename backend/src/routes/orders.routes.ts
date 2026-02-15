@@ -7,18 +7,18 @@ import {
   listOrders,
   updateOrderStatus,
 } from "../controllers/orders.controller";
-import { requireAuth, requireRole } from "../middleware/auth.middleware";
+import { requireAdmin, requireAuth } from "../middleware/auth.middleware";
 
 const ordersRouter = Router();
 
-ordersRouter.get("/", requireAuth, listOrders);
+ordersRouter.get("/", requireAuth, requireAdmin, listOrders);
 
-ordersRouter.get("/:id", requireAuth, getOrderById);
+ordersRouter.get("/:id", requireAuth, requireAdmin, getOrderById);
 
-ordersRouter.post("/", requireAuth, createOrder);
+ordersRouter.post("/", requireAuth, requireAdmin, createOrder);
 
-ordersRouter.patch("/:id/status", requireAuth, requireRole(["admin"]), updateOrderStatus);
+ordersRouter.patch("/:id/status", requireAuth, requireAdmin, updateOrderStatus);
 
-ordersRouter.delete("/:id", requireAuth, deleteOrder);
+ordersRouter.delete("/:id", requireAuth, requireAdmin, deleteOrder);
 
 export { ordersRouter };

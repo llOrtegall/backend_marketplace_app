@@ -2,10 +2,12 @@ import { createBrowserRouter } from "react-router";
 import { Suspense, lazy } from "react";
 
 import Layout from "./Layout";
+import AdminRouteGuard from "./AdminRouteGuard";
 
 const Home = lazy(() => import("../pages/Home"));
 const Login = lazy(() => import("../pages/Login"));
 const Register = lazy(() => import("../pages/Register"));
+const Admin = lazy(() => import("../pages/admin"));
 
 
 export const router = createBrowserRouter([
@@ -37,6 +39,16 @@ export const router = createBrowserRouter([
       <Suspense fallback={<div>Loading...</div>}>
         <Register />
       </Suspense>
+    )
+  },
+  {
+    path: "/admin",
+    element: (
+      <AdminRouteGuard>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Admin />
+        </Suspense>
+      </AdminRouteGuard>
     )
   }
 ])

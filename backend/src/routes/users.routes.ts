@@ -1,16 +1,16 @@
 import { Router } from "express";
 
 import { deleteUserById, getUserById, listUsers, updateUserById } from "../controllers/users.controller";
-import { requireAuth, requireRole } from "../middleware/auth.middleware";
+import { requireAdmin, requireAuth } from "../middleware/auth.middleware";
 
 const usersRouter = Router();
 
-usersRouter.get("/", requireAuth, requireRole(["admin"]), listUsers);
+usersRouter.get("/", requireAuth, requireAdmin, listUsers);
 
-usersRouter.get("/:id", requireAuth, getUserById);
+usersRouter.get("/:id", requireAuth, requireAdmin, getUserById);
 
-usersRouter.put("/:id", requireAuth, updateUserById);
+usersRouter.put("/:id", requireAuth, requireAdmin, updateUserById);
 
-usersRouter.delete("/:id", requireAuth, requireRole(["admin"]), deleteUserById);
+usersRouter.delete("/:id", requireAuth, requireAdmin, deleteUserById);
 
 export { usersRouter };

@@ -1,9 +1,23 @@
-import { useEffect } from "react";
-import { Outlet, useSearchParams } from "react-router";
+import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import { toast } from "sonner";
+
+type Product = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: string;
+  imageUrl: string;
+  stock: number;
+  isActive: boolean;
+};
 
 export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
 
   useEffect(() => {
     const authStatus = searchParams.get("auth");
@@ -25,10 +39,91 @@ export default function Home() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoadingProducts(true);
+        setProductsError(null);
+
+        const response = await axios.get<{ data: Product[] }>("/products");
+        const activeProducts = response.data.data.filter((product) => product.isActive);
+        setProducts(activeProducts);
+      } catch {
+        setProductsError("No se pudieron cargar los productos.");
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+
+    void fetchProducts();
+  }, []);
+
+  const hasProducts = useMemo(() => products.length > 0, [products.length]);
+
   return (
-    <div>
-      <h1>Home</h1>
-      <Outlet />
-    </div>
+    <main className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Productos</h1>
+        <p className="mt-2 text-sm text-gray-600">Explora el catálogo disponible en tienda.</p>
+      </div>
+
+      {isLoadingProducts && (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <article key={index} className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              <div className="aspect-square animate-pulse bg-gray-100" />
+              <div className="space-y-3 p-4">
+                <div className="h-4 w-2/3 animate-pulse rounded bg-gray-100" />
+                <div className="h-3 w-full animate-pulse rounded bg-gray-100" />
+                <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {!isLoadingProducts && productsError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {productsError}
+        </div>
+      )}
+
+      {!isLoadingProducts && !productsError && !hasProducts && (
+        <div className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-600">
+          No hay productos disponibles por ahora.
+        </div>
+      )}
+
+      {!isLoadingProducts && !productsError && hasProducts && (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {products.map((product) => (
+            <article key={product.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="aspect-square w-full object-cover"
+                loading="lazy"
+              />
+
+              <div className="space-y-3 p-4">
+                <h2 className="line-clamp-1 text-base font-semibold text-gray-900">{product.name}</h2>
+                <p className="line-clamp-2 text-sm text-gray-600">{product.description ?? "Sin descripción"}</p>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {new Intl.NumberFormat("es-CO", {
+                      style: "currency",
+                      currency: "COP",
+                      maximumFractionDigits: 0,
+                    }).format(Number(product.price))}
+                  </span>
+                  <span className="text-xs text-gray-500">Stock: {product.stock}</span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </main>
   );
 }

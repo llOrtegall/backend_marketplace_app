@@ -7,6 +7,7 @@ export class Product extends Model<InferAttributes<Product>, InferCreationAttrib
   declare name: string;
   declare description: CreationOptional<string | null>;
   declare price: string;
+  declare image: string;
   declare stock: CreationOptional<number>;
   declare isActive: CreationOptional<boolean>;
   declare createdAt: CreationOptional<Date>;
@@ -28,6 +29,10 @@ Product.init(
       type: DataTypes.TEXT,
       allowNull: true,
       defaultValue: null,
+    },
+    image: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     price: {
       type: DataTypes.DECIMAL(10, 2),

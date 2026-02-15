@@ -1,11 +1,25 @@
 import { ServiceError } from "../errors/service.error";
 import type { ProductInput } from "../schema/validateProduct";
 import { Product } from "../models";
+import { getProductImageSignedUrl, uploadProductImageToR2 } from "../lib/r2";
+
+type ProductPayload = Awaited<ReturnType<Product["toJSON"]>> & {
+  imageUrl: string;
+};
 
 export class ProductsService {
+  private async serializeProduct(product: Product): Promise<ProductPayload> {
+    const imageUrl = await getProductImageSignedUrl(product.image);
+    return {
+      ...product.toJSON(),
+      imageUrl,
+    };
+  }
+
   async listProducts() {
     const products = await Product.findAll({ order: [["createdAt", "DESC"]] });
-    return { data: products };
+    const serialized = await Promise.all(products.map((product) => this.serializeProduct(product)));
+    return { data: serialized };
   }
 
   async getProductById(productId: string) {
@@ -15,25 +29,28 @@ export class ProductsService {
       throw new ServiceError(404, "Product not found");
     }
 
-    return { data: product };
+    return { data: await this.serializeProduct(product) };
   }
 
-  async createProduct(data: ProductInput) {
+  async createProduct(data: ProductInput, imageFile: Express.Multer.File) {
     const { name, description, price, stock, isActive } = data;
 
     if (!name || price === undefined) {
       throw new ServiceError(400, "name and price are required");
     }
 
+    const imageKey = await uploadProductImageToR2(imageFile);
+
     const product = await Product.create({
       name,
       description: description ?? null,
+      image: imageKey,
       price: String(price),
       stock: stock ?? 0,
       isActive: isActive ?? true,
     });
 
-    return { data: product };
+    return { data: await this.serializeProduct(product) };
   }
 
   async updateProductById(productId: string, data: ProductInput) {
@@ -53,7 +70,7 @@ export class ProductsService {
       isActive: isActive !== undefined ? isActive : product.isActive,
     })
 
-    return { data: product };
+    return { data: await this.serializeProduct(product) };
   }
 
   async deactivateProductById(productId: string) {

@@ -4,6 +4,31 @@ import { productsService } from "../services/products.service";
 import { handleControllerError } from "./controller-error-handler";
 import { validateProduct } from "../schema/validateProduct";
 
+const parseOptionalNumber = (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  const num = Number(value);
+  return Number.isNaN(num) ? value : num;
+};
+
+const parseOptionalBoolean = (value: unknown) => {
+  if (value === undefined || value === null || value === "") {
+    return undefined;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return value.toLowerCase() === "true";
+  }
+
+  return value;
+};
+
 export const listProducts = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await productsService.listProducts();
@@ -30,13 +55,24 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
 
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { success, data, error } = validateProduct(req.body);
+    if (!req.file) {
+      return res.status(400).json({ error: "Product image is required" });
+    }
+
+    const normalizedBody = {
+      ...req.body,
+      price: parseOptionalNumber(req.body.price),
+      stock: parseOptionalNumber(req.body.stock),
+      isActive: parseOptionalBoolean(req.body.isActive),
+    };
+
+    const { success, data, error } = validateProduct(normalizedBody);
 
     if (!success) {
       return res.status(400).json({ error });
     }
 
-    const result = await productsService.createProduct(data);
+    const result = await productsService.createProduct(data, req.file);
 
     return res.status(201).json(result);
   } catch (error) {
@@ -52,7 +88,14 @@ export const updateProductById = async (req: Request, res: Response, next: NextF
   const id = String(req.params.id);
 
   try {
-    const { success, data, error } = validateProduct(req.body);
+    const normalizedBody = {
+      ...req.body,
+      price: parseOptionalNumber(req.body.price),
+      stock: parseOptionalNumber(req.body.stock),
+      isActive: parseOptionalBoolean(req.body.isActive),
+    };
+
+    const { success, data, error } = validateProduct(normalizedBody);
 
     if (!success) {
       return res.status(400).json({ error });

@@ -35,18 +35,21 @@ const seed = async () => {
       {
         name: "Teclado Mecánico",
         description: "Teclado mecánico RGB switch blue",
+        image: "products/seed-teclado-mecanico.jpg",
         price: "259000.00",
         stock: 25,
       },
       {
         name: "Mouse Gamer",
         description: "Mouse ergonómico 12000 DPI",
+        image: "products/seed-mouse-gamer.jpg",
         price: "149000.00",
         stock: 40,
       },
       {
         name: "Audífonos Inalámbricos",
         description: "Cancelación de ruido y batería 30h",
+        image: "products/seed-audifonos-inalambricos.jpg",
         price: "329000.00",
         stock: 18,
       },

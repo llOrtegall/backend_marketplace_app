@@ -8,6 +8,16 @@ export const auth = betterAuth({
     connectionString: process.env.DATABASE_URL,
     options: `-c search_path=${process.env.DATABASE_SCHEMA}`,
   }),
+  user: {
+    additionalFields: {
+      role: {
+        type: ["customer", "admin"],
+        required: false,
+        defaultValue: "customer",
+        input: false,
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },

@@ -1,11 +1,11 @@
-import axios from "axios";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 type ProductInCart = {
   id: string;
   name: string;
   price: string;
-  imageUrl?: string;
+  imageUrl: string;
+  stock: number;
 };
 
 type CartItem = {
@@ -15,100 +15,144 @@ type CartItem = {
   subtotal: number;
 };
 
-type CartResponse = {
-  data: {
-    items: CartItem[];
-    total: number;
-  };
-};
-
 type CartContextValue = {
   items: CartItem[];
   total: number;
   itemsCount: number;
   isCartLoading: boolean;
   isInCart: (productId: string) => boolean;
-  addToCart: (productId: string) => Promise<boolean>;
+  addToCart: (product: ProductInCart) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<boolean>;
   refreshCart: () => Promise<void>;
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
+const CART_STORAGE_KEY = "astro_marketplace_cart_v1";
 
-const toCartState = (response: CartResponse) => ({
-  items: response.data.items,
-  total: response.data.total,
-});
+const toCartItems = (items: Array<{ quantity: number; product: ProductInCart }>): CartItem[] =>
+  items.map((item) => ({
+    ...item,
+    id: item.product.id,
+    subtotal: Number((Number(item.product.price) * item.quantity).toFixed(2)),
+  }));
+
+const readStoredCart = (): CartItem[] => {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Array<{ quantity: number; product: ProductInCart }>;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return toCartItems(parsed).filter((item) => item.quantity > 0);
+  } catch {
+    return [];
+  }
+};
+
+const writeStoredCart = (items: CartItem[]) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload = items.map((item) => ({
+    quantity: item.quantity,
+    product: item.product,
+  }));
+
+  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
+};
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isCartLoading, setIsCartLoading] = useState(false);
 
-  const applyResponse = useCallback((response: CartResponse) => {
-    const next = toCartState(response);
-    setItems(next.items);
-    setTotal(next.total);
+  const refreshCart = useCallback(async () => {
+    setIsCartLoading(true);
+    const storedItems = readStoredCart();
+    setItems(storedItems);
+    setTotal(Number(storedItems.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2)));
+    setIsCartLoading(false);
   }, []);
 
-  const refreshCart = useCallback(async () => {
-    try {
-      setIsCartLoading(true);
-      const response = await axios.get<CartResponse>("/cart");
-      applyResponse(response.data);
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        setItems([]);
-        setTotal(0);
-        return;
+  const addToCart = useCallback(async (product: ProductInCart) => {
+    let added = true;
+
+    setItems((prev) => {
+      const existing = prev.find((item) => item.product.id === product.id);
+
+      if (!existing) {
+        const next = [...prev, {
+          id: product.id,
+          quantity: 1,
+          product,
+          subtotal: Number(product.price),
+        }];
+        writeStoredCart(next);
+        return next;
       }
 
-      throw error;
-    } finally {
-      setIsCartLoading(false);
-    }
-  }, [applyResponse]);
+      if (existing.quantity >= product.stock) {
+        added = false;
+        return prev;
+      }
 
-  const addToCart = useCallback(async (productId: string) => {
-    try {
-      setIsCartLoading(true);
-      const response = await axios.post<CartResponse>("/cart/items", { productId, quantity: 1 });
-      applyResponse(response.data);
-      return true;
-    } catch {
-      return false;
-    } finally {
-      setIsCartLoading(false);
-    }
-  }, [applyResponse]);
+      const next = prev.map((item) => {
+        if (item.product.id !== product.id) {
+          return item;
+        }
+
+        const quantity = item.quantity + 1;
+        return {
+          ...item,
+          quantity,
+          subtotal: Number((Number(item.product.price) * quantity).toFixed(2)),
+        };
+      });
+
+      writeStoredCart(next);
+      return next;
+    });
+
+    return added;
+  }, []);
 
   const removeFromCart = useCallback(async (productId: string) => {
-    const cartItem = items.find((item) => item.product?.id === productId);
-
-    if (!cartItem) {
+    const existing = items.some((item) => item.product.id === productId);
+    if (!existing) {
       return false;
     }
 
-    try {
-      setIsCartLoading(true);
-      const response = await axios.delete<CartResponse>(`/cart/items/${cartItem.id}`);
-      applyResponse(response.data);
-      return true;
-    } catch {
-      return false;
-    } finally {
-      setIsCartLoading(false);
-    }
-  }, [applyResponse, items]);
+    setItems((prev) => {
+      const next = prev.filter((item) => item.product.id !== productId);
+      writeStoredCart(next);
+      return next;
+    });
+
+    return true;
+  }, [items]);
 
   const isInCart = useCallback(
-    (productId: string) => items.some((item) => item.product?.id === productId),
+    (productId: string) => items.some((item) => item.product.id === productId),
     [items],
   );
 
   useEffect(() => {
     void refreshCart();
   }, [refreshCart]);
+
+  useEffect(() => {
+    setTotal(Number(items.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2)));
+  }, [items]);
 
   const itemsCount = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),

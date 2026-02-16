@@ -5,13 +5,14 @@ type Product = {
   price: string;
   imageUrl: string;
   stock: number;
+  isActive: boolean;
 };
 
 type ProductCardProps = {
   product: Product;
   isInCart: boolean;
   isCartLoading: boolean;
-  onAddToCart: (productId: string) => void;
+  onAddToCart: (product: Product) => void;
   onRemoveFromCart: (productId: string) => void;
 };
 
@@ -58,7 +59,7 @@ export default function ProductCard({
         ) : (
           <button
             type="button"
-            onClick={() => onAddToCart(product.id)}
+            onClick={() => onAddToCart(product)}
             disabled={isCartLoading || product.stock < 1}
             className="w-full rounded-xl bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
           >

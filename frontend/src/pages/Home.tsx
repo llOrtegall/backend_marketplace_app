@@ -2,7 +2,6 @@ import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { useSession } from "@/lib/auth-client";
 import { useCart } from "@/contexts/CartContext";
 import ProductCard from "@/components/ProductCard";
 
@@ -17,7 +16,6 @@ type Product = {
 };
 
 export default function Home() {
-  const { data: session } = useSession();
   const { addToCart, removeFromCart, isInCart, isCartLoading } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
@@ -65,28 +63,24 @@ export default function Home() {
 
   const hasProducts = useMemo(() => products.length > 0, [products.length]);
 
-  const handleAddToCart = async (productId: string) => {
-    if (!session?.user) {
-      toast.error("Debes iniciar sesión para agregar productos al carrito");
-      return;
-    }
-
-    const success = await addToCart(productId);
+  const handleAddToCart = async (product: Product) => {
+    const success = await addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      imageUrl: product.imageUrl,
+      stock: product.stock,
+    });
 
     if (success) {
       toast.success("Producto agregado al carrito");
       return;
     }
 
-    toast.error("No se pudo agregar el producto al carrito");
+    toast.error("No hay más stock disponible para este producto");
   };
 
   const handleRemoveFromCart = async (productId: string) => {
-    if (!session?.user) {
-      toast.error("Debes iniciar sesión para gestionar el carrito");
-      return;
-    }
-
     const success = await removeFromCart(productId);
 
     if (success) {

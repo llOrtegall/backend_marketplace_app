@@ -1,11 +1,14 @@
-import { ShoppingCart, UserRound, UserRoundCheck } from "lucide-react";
+import { UserRound, UserRoundCheck } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
+import ShoppingCartButton from "./ShoppingCartButton";
 import { Link } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCart } from "@/contexts/CartContext";
 
 export default function Header() {
   const { data } = useSession();
+  const { itemsCount } = useCart();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -129,9 +132,7 @@ export default function Header() {
               </div>
             )}
           </div>
-          <button className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium cursor-pointer hover:bg-gray-100 rounded-full p-2">
-            <ShoppingCart className="size-8" />
-          </button>
+          <ShoppingCartButton itemsCount={itemsCount} />
         </section>
       </div>
     </header>

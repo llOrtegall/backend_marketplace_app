@@ -2,6 +2,9 @@ import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { useSession } from "@/lib/auth-client";
+import { useCart } from "@/contexts/CartContext";
+import ProductCard from "@/components/ProductCard";
 
 type Product = {
   id: string;
@@ -14,6 +17,8 @@ type Product = {
 };
 
 export default function Home() {
+  const { data: session } = useSession();
+  const { addToCart, removeFromCart, isInCart, isCartLoading } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -60,6 +65,38 @@ export default function Home() {
 
   const hasProducts = useMemo(() => products.length > 0, [products.length]);
 
+  const handleAddToCart = async (productId: string) => {
+    if (!session?.user) {
+      toast.error("Debes iniciar sesión para agregar productos al carrito");
+      return;
+    }
+
+    const success = await addToCart(productId);
+
+    if (success) {
+      toast.success("Producto agregado al carrito");
+      return;
+    }
+
+    toast.error("No se pudo agregar el producto al carrito");
+  };
+
+  const handleRemoveFromCart = async (productId: string) => {
+    if (!session?.user) {
+      toast.error("Debes iniciar sesión para gestionar el carrito");
+      return;
+    }
+
+    const success = await removeFromCart(productId);
+
+    if (success) {
+      toast.success("Producto removido del carrito");
+      return;
+    }
+
+    toast.error("No se pudo remover el producto del carrito");
+  };
+
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-10 md:px-6">
       <div className="mb-8">
@@ -97,30 +134,14 @@ export default function Home() {
       {!isLoadingProducts && !productsError && hasProducts && (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {products.map((product) => (
-            <article key={product.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="aspect-square w-full object-cover"
-                loading="lazy"
-              />
-
-              <div className="space-y-3 p-4">
-                <h2 className="line-clamp-1 text-base font-semibold text-gray-900">{product.name}</h2>
-                <p className="line-clamp-2 text-sm text-gray-600">{product.description ?? "Sin descripción"}</p>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {new Intl.NumberFormat("es-CO", {
-                      style: "currency",
-                      currency: "COP",
-                      maximumFractionDigits: 0,
-                    }).format(Number(product.price))}
-                  </span>
-                  <span className="text-xs text-gray-500">Stock: {product.stock}</span>
-                </div>
-              </div>
-            </article>
+            <ProductCard
+              key={product.id}
+              product={product}
+              isInCart={isInCart(product.id)}
+              isCartLoading={isCartLoading}
+              onAddToCart={handleAddToCart}
+              onRemoveFromCart={handleRemoveFromCart}
+            />
           ))}
         </div>
       )}

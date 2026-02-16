@@ -1,18 +1,18 @@
 import { Router } from "express";
 
 import { addCartItem, clearCart, getCart, removeCartItem, updateCartItem } from "../controllers/cart.controller";
-import { requireAdmin, requireAuth } from "../middleware/auth.middleware";
+import { requireAuth } from "../middleware/auth.middleware";
 
 const cartRouter = Router();
 
-cartRouter.get("/", requireAuth, requireAdmin, getCart);
+cartRouter.get("/", requireAuth, getCart);
 
-cartRouter.post("/items", requireAuth, requireAdmin, addCartItem);
+cartRouter.post("/items", requireAuth, addCartItem);
 
-cartRouter.patch("/items/:id", requireAuth, requireAdmin, updateCartItem);
+cartRouter.patch("/items/:id", requireAuth, updateCartItem);
 
-cartRouter.delete("/items/:id", requireAuth, requireAdmin, removeCartItem);
+cartRouter.delete("/items/:id", requireAuth, removeCartItem);
 
-cartRouter.delete("/", requireAuth, requireAdmin, clearCart);
+cartRouter.delete("/", requireAuth, clearCart);
 
 export { cartRouter };

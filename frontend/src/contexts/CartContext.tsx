@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
 type ProductInCart = {
   id: string;
@@ -23,11 +23,11 @@ type CartContextValue = {
   isInCart: (productId: string) => boolean;
   addToCart: (product: ProductInCart) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<boolean>;
-  refreshCart: () => Promise<void>;
+  refreshCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
-const CART_STORAGE_KEY = "astro_marketplace_cart_v1";
+const CART_STORAGE_KEY = "react_marketplace_cart_v1";
 
 const toCartItems = (items: Array<{ quantity: number; product: ProductInCart }>): CartItem[] =>
   items.map((item) => ({
@@ -72,15 +72,13 @@ const writeStoredCart = (items: CartItem[]) => {
 };
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [total, setTotal] = useState(0);
+  const [items, setItems] = useState<CartItem[]>(() => readStoredCart());
   const [isCartLoading, setIsCartLoading] = useState(false);
 
-  const refreshCart = useCallback(async () => {
+  const refreshCart = useCallback(() => {
     setIsCartLoading(true);
     const storedItems = readStoredCart();
     setItems(storedItems);
-    setTotal(Number(storedItems.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2)));
     setIsCartLoading(false);
   }, []);
 
@@ -91,12 +89,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const existing = prev.find((item) => item.product.id === product.id);
 
       if (!existing) {
-        const next = [...prev, {
-          id: product.id,
-          quantity: 1,
-          product,
-          subtotal: Number(product.price),
-        }];
+        const next = [
+          ...prev,
+          {
+            id: product.id,
+            quantity: 1,
+            product,
+            subtotal: Number(product.price),
+          },
+        ];
         writeStoredCart(next);
         return next;
       }
@@ -107,9 +108,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
 
       const next = prev.map((item) => {
-        if (item.product.id !== product.id) {
-          return item;
-        }
+        if (item.product.id !== product.id) return item;
 
         const quantity = item.quantity + 1;
         return {
@@ -128,9 +127,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const removeFromCart = useCallback(async (productId: string) => {
     const existing = items.some((item) => item.product.id === productId);
-    if (!existing) {
-      return false;
-    }
+    if (!existing) return false;
 
     setItems((prev) => {
       const next = prev.filter((item) => item.product.id !== productId);
@@ -146,13 +143,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items],
   );
 
-  useEffect(() => {
-    void refreshCart();
-  }, [refreshCart]);
-
-  useEffect(() => {
-    setTotal(Number(items.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2)));
-  }, [items]);
+  const total = useMemo(
+    () => Number(items.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2)),
+    [items],
+  );
 
   const itemsCount = useMemo(
     () => items.reduce((acc, item) => acc + item.quantity, 0),
@@ -175,6 +169,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
+
+// ...existing code...
 
 // eslint-disable-next-line react-refresh/only-export-components
 export function useCart() {

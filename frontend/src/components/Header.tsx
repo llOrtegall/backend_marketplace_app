@@ -4,11 +4,9 @@ import ShoppingCartButton from "./ShoppingCartButton";
 import { Link } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useCart } from "@/contexts/CartContext";
 
 export default function Header() {
   const { data } = useSession();
-  const { itemsCount } = useCart();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -132,7 +130,7 @@ export default function Header() {
               </div>
             )}
           </div>
-          <ShoppingCartButton itemsCount={itemsCount} />
+          <ShoppingCartButton />
         </section>
       </div>
     </header>

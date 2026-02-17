@@ -13,9 +13,14 @@ class ProductsService implements ProductRepository {
     return ProductsService.instance;
   }
 
-  getAllProducts(): Promise<Product[]> {
-    throw new Error("Method not implemented.");
+  getAllProducts = async (): Promise<Product[]> => {
+    const products = await Product.findAll({
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+    });
+
+    return products;
   }
+
   getProductById(id: string): Promise<Product | null> {
     throw new Error("Method not implemented.");
   }
@@ -27,6 +32,7 @@ class ProductsService implements ProductRepository {
   updateProduct(id: string, data: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>): Promise<Product | null> {
     throw new Error("Method not implemented.");
   }
+
   deactivateProduct(id: string): Promise<void> {
     throw new Error("Method not implemented.");
   }

@@ -3,7 +3,7 @@ import { type Transaction } from "sequelize";
 
 import { ServiceError } from "../errors/service.error";
 import { sequelize } from "../config/database";
-import { CartItem, Order, OrderItem, Product, User } from "../models";
+import { CartItem, Order, OrderItem, Product } from "../models";
 
 const allowedStatuses = ["APPROVED", "DECLINED", "PENDING"] as const;
 const checkoutCurrency = "COP";
@@ -58,23 +58,6 @@ export class PaymentsService {
       })),
       { transaction },
     );
-  }
-
-  private async resolveCustomerEmail(
-    userId: string,
-    customerEmail: string | undefined,
-    transaction: Transaction,
-  ) {
-    if (customerEmail) {
-      return customerEmail;
-    }
-
-    const user = await User.findByPk(userId, { transaction });
-    if (!user?.email) {
-      throw new ServiceError(400, "Unable to resolve customer email");
-    }
-
-    return String(user.email);
   }
 
   private async getValidatedCartSnapshot(userId: string, transaction: Transaction) {
@@ -162,13 +145,12 @@ export class PaymentsService {
   }
 
   async checkoutWithWompi(userId: string, customerEmail: string | undefined, input: CheckoutInput) {
+    if (!customerEmail) {
+      throw new ServiceError(401, "Authenticated user email is required");
+    }
+
     return sequelize.transaction(async (transaction) => {
       await this.syncCartItems(userId, input.items, transaction);
-      const resolvedCustomerEmail = await this.resolveCustomerEmail(
-        userId,
-        customerEmail,
-        transaction,
-      );
 
       const snapshot = await this.getValidatedCartSnapshot(userId, transaction);
 
@@ -204,7 +186,7 @@ export class PaymentsService {
             reference,
             amountInCents,
             currency: checkoutCurrency,
-            customerEmail: resolvedCustomerEmail,
+            customerEmail,
             checkoutUrl,
           },
           message: "Wompi sandbox checkout created",

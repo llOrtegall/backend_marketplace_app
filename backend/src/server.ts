@@ -10,6 +10,14 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log("Database connection established");
 
+    const schema = process.env.DATABASE_STORE_SCHEMA ?? "public";
+    await sequelize.query(
+      `ALTER TABLE "${schema}"."CartItems" DROP CONSTRAINT IF EXISTS "CartItems_userId_fkey";`,
+    );
+    await sequelize.query(
+      `ALTER TABLE "${schema}"."Orders" DROP CONSTRAINT IF EXISTS "Orders_userId_fkey";`,
+    );
+
     await sequelize.sync();
     console.log("Database models synchronized");
 

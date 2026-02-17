@@ -1,7 +1,7 @@
 import { hash } from "bcryptjs";
 
 import { sequelize } from "../config/database";
-import { CartItem, Order, Product, User, initModels } from "../models";
+import { CartItem, Order, Product, initModels } from "../models";
 
 const seed = async () => {
   try {
@@ -9,27 +9,9 @@ const seed = async () => {
     await sequelize.authenticate();
     await sequelize.sync();
 
-    const passwordHash = await hash("Secret123!", 10);
+    await hash("Secret123!", 10);
 
-    const [admin] = await User.findOrCreate({
-      where: { email: "admin@ecommerce.local" },
-      defaults: {
-        fullName: "Admin Ecommerce",
-        email: "admin@ecommerce.local",
-        password: passwordHash,
-        role: "admin",
-      },
-    });
-
-    const [customer] = await User.findOrCreate({
-      where: { email: "customer@ecommerce.local" },
-      defaults: {
-        fullName: "Cliente Demo",
-        email: "customer@ecommerce.local",
-        password: passwordHash,
-        role: "customer",
-      },
-    });
+    const demoUserId = "seed-demo-customer";
 
     const mockProducts = [
       {
@@ -77,33 +59,33 @@ const seed = async () => {
 
     const [pendingOrder] = await Order.findOrCreate({
       where: {
-        userId: customer.id,
+        userId: demoUserId,
         status: "pending",
       },
       defaults: {
-        userId: customer.id,
+        userId: demoUserId,
         status: "pending",
         total: "408000.00",
       },
     });
 
-    await CartItem.destroy({ where: { userId: customer.id } });
+    await CartItem.destroy({ where: { userId: demoUserId } });
 
     await CartItem.bulkCreate([
       {
-        userId: customer.id,
+        userId: demoUserId,
         productId: keyboard.id,
         quantity: 1,
       },
       {
-        userId: customer.id,
+        userId: demoUserId,
         productId: mouse.id,
         quantity: 2,
       },
     ]);
 
     console.log("Seed completed successfully", {
-      users: [admin.email, customer.email],
+      demoUserId,
       products: products.map((product) => product.name),
       pendingOrderId: pendingOrder.id,
     });

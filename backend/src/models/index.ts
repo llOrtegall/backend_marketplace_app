@@ -1,5 +1,6 @@
 import { CartItem } from "./cart-item.model";
 import { Order } from "./order.model";
+import { OrderItem } from "./order-item.model";
 import { Product } from "./product.model";
 import { User } from "./user.model";
 
@@ -16,6 +17,34 @@ const initializeModelAssociations = () => {
     as: "user",
     onUpdate: "CASCADE",
     onDelete: "CASCADE",
+  });
+
+  Order.hasMany(OrderItem, {
+    foreignKey: "orderId",
+    as: "items",
+    onUpdate: "CASCADE",
+    onDelete: "CASCADE",
+  });
+
+  OrderItem.belongsTo(Order, {
+    foreignKey: "orderId",
+    as: "order",
+    onUpdate: "CASCADE",
+    onDelete: "CASCADE",
+  });
+
+  Product.hasMany(OrderItem, {
+    foreignKey: "productId",
+    as: "orderItems",
+    onUpdate: "CASCADE",
+    onDelete: "RESTRICT",
+  });
+
+  OrderItem.belongsTo(Product, {
+    foreignKey: "productId",
+    as: "product",
+    onUpdate: "CASCADE",
+    onDelete: "RESTRICT",
   });
 
   User.hasMany(CartItem, {
@@ -58,4 +87,4 @@ export const initModels = () => {
   modelsInitialized = true;
 };
 
-export { CartItem, Order, Product, User };
+export { CartItem, Order, OrderItem, Product, User };

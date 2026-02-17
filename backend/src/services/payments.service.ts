@@ -1,7 +1,9 @@
 import crypto from "node:crypto";
+import { type Transaction } from "sequelize";
 
 import { ServiceError } from "../errors/service.error";
-import { CartItem, Order, Product, User } from "../models";
+import { sequelize } from "../config/database";
+import { CartItem, Order, OrderItem, Product, User } from "../models";
 
 const allowedStatuses = ["APPROVED", "DECLINED", "PENDING"] as const;
 const checkoutCurrency = "COP";
@@ -30,7 +32,11 @@ const getNestedValue = (value: unknown, path: string): string => {
 const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
 export class PaymentsService {
-  private async syncCartItems(userId: string, items: CheckoutInput["items"]) {
+  private async syncCartItems(
+    userId: string,
+    items: CheckoutInput["items"],
+    transaction?: Transaction,
+  ) {
     if (!items || items.length === 0) {
       return;
     }
@@ -43,14 +49,84 @@ export class PaymentsService {
       throw new ServiceError(400, "items payload is invalid");
     }
 
-    await CartItem.destroy({ where: { userId } });
+    await CartItem.destroy({ where: { userId }, transaction });
     await CartItem.bulkCreate(
       normalizedItems.map((item) => ({
         userId,
         productId: item.productId,
         quantity: item.quantity,
       })),
+      { transaction },
     );
+  }
+
+  private async resolveCustomerEmail(
+    userId: string,
+    customerEmail: string | undefined,
+    transaction: Transaction,
+  ) {
+    if (customerEmail) {
+      return customerEmail;
+    }
+
+    const user = await User.findByPk(userId, { transaction });
+    if (!user?.email) {
+      throw new ServiceError(400, "Unable to resolve customer email");
+    }
+
+    return String(user.email);
+  }
+
+  private async getValidatedCartSnapshot(userId: string, transaction: Transaction) {
+    const cartItems = await CartItem.findAll({
+      where: { userId },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!cartItems.length) {
+      throw new ServiceError(400, "Cart is empty");
+    }
+
+    const productIds = [...new Set(cartItems.map((item) => item.productId))];
+    const products = await Product.findAll({
+      where: { id: productIds },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+
+    const normalizedItems = cartItems.map((item) => {
+      const product = productsById.get(item.productId);
+
+      if (!product || !product.isActive) {
+        throw new ServiceError(400, "Cart contains unavailable products");
+      }
+
+      if (item.quantity > product.stock) {
+        throw new ServiceError(400, `Insufficient stock for product ${product.id}`);
+      }
+
+      const unitPrice = Number(product.price);
+      const subtotal = Number((unitPrice * item.quantity).toFixed(2));
+
+      return {
+        product,
+        quantity: item.quantity,
+        unitPrice,
+        subtotal,
+      };
+    });
+
+    const total = Number(
+      normalizedItems.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2),
+    );
+
+    return {
+      items: normalizedItems,
+      total,
+    };
   }
 
   private buildCheckoutUrl({
@@ -86,59 +162,55 @@ export class PaymentsService {
   }
 
   async checkoutWithWompi(userId: string, customerEmail: string | undefined, input: CheckoutInput) {
-    await this.syncCartItems(userId, input.items);
+    return sequelize.transaction(async (transaction) => {
+      await this.syncCartItems(userId, input.items, transaction);
+      const resolvedCustomerEmail = await this.resolveCustomerEmail(
+        userId,
+        customerEmail,
+        transaction,
+      );
 
-    for (const item of await CartItem.findAll({
-      where: { userId },
-      include: [{ model: Product, as: "product" }],
-    })) {
-      const product = (item as CartItem & { product?: Product }).product;
+      const snapshot = await this.getValidatedCartSnapshot(userId, transaction);
 
-      if (!product || !product.isActive) {
-        throw new ServiceError(400, "Cart contains unavailable products");
-      }
-
-      if (item.quantity > product.stock) {
-        throw new ServiceError(400, `Insufficient stock for product ${product.id}`);
-      }
-    }
-
-    const total = Number(
-      (await CartItem.findAll({
-        where: { userId },
-        include: [{ model: Product, as: "product" }],
-      }))
-        .reduce((acc, item) => {
-          const product = (item as CartItem & { product?: Product }).product;
-          return acc + Number(product?.price ?? 0) * item.quantity;
-        }, 0)
-        .toFixed(2),
-    );
-
-    const order = await Order.create({
-      userId,
-      total: String(total),
-      status: "pending",
-    });
-
-    const reference = `ORDER-${order.id}`;
-    const amountInCents = Math.round(total * 100);
-    const checkoutUrl = this.buildCheckoutUrl({ amountInCents, reference });
-
-    return {
-      data: {
-        order,
-        wompi: {
-          sandbox: true,
-          reference,
-          amountInCents,
-          currency: checkoutCurrency,
-          customerEmail,
-          checkoutUrl,
+      const order = await Order.create(
+        {
+          userId,
+          total: String(snapshot.total),
+          status: "pending",
         },
-        message: "Wompi sandbox checkout created",
-      },
-    };
+        { transaction },
+      );
+
+      await OrderItem.bulkCreate(
+        snapshot.items.map((item) => ({
+          orderId: order.id,
+          productId: item.product.id,
+          quantity: item.quantity,
+          unitPrice: String(item.unitPrice),
+          subtotal: String(item.subtotal),
+        })),
+        { transaction },
+      );
+
+      const reference = `ORDER-${order.id}`;
+      const amountInCents = Math.round(snapshot.total * 100);
+      const checkoutUrl = this.buildCheckoutUrl({ amountInCents, reference });
+
+      return {
+        data: {
+          order,
+          wompi: {
+            sandbox: true,
+            reference,
+            amountInCents,
+            currency: checkoutCurrency,
+            customerEmail: resolvedCustomerEmail,
+            checkoutUrl,
+          },
+          message: "Wompi sandbox checkout created",
+        },
+      };
+    });
   }
 
   private validateWebhookSignature(payload: WebhookPayload) {
@@ -195,47 +267,71 @@ export class PaymentsService {
     }
 
     const orderId = reference.replace("ORDER-", "");
-    const order = await Order.findByPk(orderId);
 
-    if (!order) {
-      throw new ServiceError(404, "Order not found");
-    }
-
-    if (order.status === "paid" && status === "APPROVED") {
-      return { message: "Webhook already applied" };
-    }
-
-    if (order.status === "cancelled" && status === "DECLINED") {
-      return { message: "Webhook already applied" };
-    }
-
-    if (status === "APPROVED") {
-      const cartItems = await CartItem.findAll({
-        where: { userId: order.userId },
-        include: [{ model: Product, as: "product" }],
+    return sequelize.transaction(async (transaction) => {
+      const order = await Order.findByPk(orderId, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
 
-      for (const item of cartItems) {
-        const product = (item as CartItem & { product?: Product }).product;
-        if (!product || item.quantity > product.stock) {
-          throw new ServiceError(400, "Unable to fulfill paid order due to stock mismatch");
-        }
-
-        product.stock -= item.quantity;
-        await product.save();
+      if (!order) {
+        throw new ServiceError(404, "Order not found");
       }
 
-      order.status = "paid";
-      await order.save();
-      await CartItem.destroy({ where: { userId: order.userId } });
-    }
+      if (order.status === "paid" && status === "APPROVED") {
+        return { message: "Webhook already applied" };
+      }
 
-    if (status === "DECLINED") {
-      order.status = "cancelled";
-      await order.save();
-    }
+      if (order.status === "cancelled" && status === "DECLINED") {
+        return { message: "Webhook already applied" };
+      }
 
-    return { message: "Webhook processed" };
+      if (status === "APPROVED") {
+        const orderItems = await OrderItem.findAll({
+          where: { orderId: order.id },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (!orderItems.length) {
+          throw new ServiceError(400, "Order has no items to fulfill");
+        }
+
+        const productIds = [...new Set(orderItems.map((item) => item.productId))];
+        const products = await Product.findAll({
+          where: { id: productIds },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        const productsById = new Map(products.map((product) => [product.id, product]));
+
+        for (const item of orderItems) {
+          const product = productsById.get(item.productId);
+
+          if (!product || !product.isActive) {
+            throw new ServiceError(400, "Unable to fulfill paid order due to product availability");
+          }
+
+          if (item.quantity > product.stock) {
+            throw new ServiceError(400, "Unable to fulfill paid order due to stock mismatch");
+          }
+
+          product.stock -= item.quantity;
+          await product.save({ transaction });
+        }
+
+        order.status = "paid";
+        await order.save({ transaction });
+        await CartItem.destroy({ where: { userId: order.userId }, transaction });
+      }
+
+      if (status === "DECLINED") {
+        order.status = "cancelled";
+        await order.save({ transaction });
+      }
+
+      return { message: "Webhook processed" };
+    });
   }
 
   async getWompiPaymentStatus(userId: string, reference: string) {

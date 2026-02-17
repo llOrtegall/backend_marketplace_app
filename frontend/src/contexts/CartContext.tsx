@@ -25,6 +25,7 @@ type CartContextValue = {
   incrementItemQuantity: (productId: string) => Promise<boolean>;
   decrementItemQuantity: (productId: string) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<boolean>;
+  clearCart: () => void;
   refreshCart: () => void;
 };
 
@@ -213,6 +214,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return removed;
   }, []);
 
+  const clearCart = useCallback(() => {
+    setItems([]);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(CART_STORAGE_KEY);
+    }
+  }, []);
+
   const isInCart = useCallback(
     (productId: string) => items.some((item) => item.product.id === productId),
     [items],
@@ -239,6 +248,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       incrementItemQuantity,
       decrementItemQuantity,
       removeFromCart,
+      clearCart,
       refreshCart,
     }),
     [
@@ -251,6 +261,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       incrementItemQuantity,
       decrementItemQuantity,
       removeFromCart,
+      clearCart,
       refreshCart,
     ],
   );

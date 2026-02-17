@@ -1,11 +1,13 @@
 import { Router } from "express";
 
-import { wompiCheckout, wompiWebhook } from "../controllers/payments.controller";
-import { requireAdmin, requireAuth } from "../middleware/auth.middleware";
+import { wompiCheckout, wompiPaymentStatus, wompiWebhook } from "../controllers/payments.controller";
+import { requireAuth } from "../middleware/auth.middleware";
 
 const paymentsRouter = Router();
 
-paymentsRouter.post("/wompi/checkout", requireAuth, requireAdmin, wompiCheckout);
+paymentsRouter.post("/wompi/checkout", requireAuth, wompiCheckout);
+
+paymentsRouter.get("/wompi/status", requireAuth, wompiPaymentStatus);
 
 paymentsRouter.post("/wompi/webhook", wompiWebhook);
 

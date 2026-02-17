@@ -1,8 +1,15 @@
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { useCallback, useMemo } from "react";
-import { Link } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
+import axios from "axios";
 import { useCart } from "@/contexts/CartContext";
+
+type PaymentStatusResponse = {
+  data: {
+    status: "pending" | "paid" | "cancelled";
+  };
+};
 
 export default function CheckOut() {
   const {
@@ -12,7 +19,11 @@ export default function CheckOut() {
     removeFromCart,
     incrementItemQuantity,
     decrementItemQuantity,
+    clearCart,
   } = useCart();
+  const [isPaying, setIsPaying] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const currencyFormatter = useMemo(
     () =>
@@ -53,9 +64,130 @@ export default function CheckOut() {
     }
   }, [decrementItemQuantity]);
 
-  const handlePay = useCallback(() => {
-    toast.info("Próximamente: integración de pago.", { position: "bottom-center" });
-  }, []);
+  const handlePay = useCallback(async () => {
+    try {
+      setIsPaying(true);
+
+      const payload = {
+        items: items.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+        })),
+      };
+
+      const response = await axios.post<{ data: { wompi: { checkoutUrl: string } } }>(
+        "/payments/wompi/checkout",
+        payload,
+      );
+
+      const checkoutUrl = response.data?.data?.wompi?.checkoutUrl;
+
+      if (!checkoutUrl) {
+        toast.error("No se pudo iniciar el pago con Wompi", { position: "bottom-center" });
+        return;
+      }
+
+      window.location.href = checkoutUrl;
+    } catch {
+      toast.error("No se pudo iniciar el pago. Verifica tu sesión e inténtalo de nuevo.", {
+        position: "bottom-center",
+      });
+    } finally {
+      setIsPaying(false);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    const paymentState = searchParams.get("payment");
+    const reference = searchParams.get("reference");
+
+    if (!reference || !paymentState) {
+      return;
+    }
+
+    let isActive = true;
+
+    const clearPaymentParams = () => {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.delete("payment");
+      nextParams.delete("reference");
+      setSearchParams(nextParams, { replace: true });
+    };
+
+    const sleep = (milliseconds: number) =>
+      new Promise((resolve) => {
+        window.setTimeout(resolve, milliseconds);
+      });
+
+    const verifyPayment = async () => {
+      setIsCheckingPayment(true);
+
+      try {
+        let status: PaymentStatusResponse["data"]["status"] = "pending";
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const response = await axios.get<PaymentStatusResponse>("/payments/wompi/status", {
+            params: { reference },
+          });
+
+          status = response.data.data.status;
+
+          if (status !== "pending") {
+            break;
+          }
+
+          await sleep(1200);
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        if (status === "paid") {
+          clearCart();
+          toast.success("Pago aprobado. ¡Tu pedido fue confirmado!", {
+            id: "wompi-payment-status",
+            position: "bottom-center",
+          });
+          clearPaymentParams();
+          return;
+        }
+
+        if (status === "cancelled") {
+          toast.error("Pago rechazado o cancelado. Puedes intentarlo nuevamente.", {
+            id: "wompi-payment-status",
+            position: "bottom-center",
+          });
+          clearPaymentParams();
+          return;
+        }
+
+        toast.info("Estamos confirmando tu pago. Actualiza en unos segundos.", {
+          id: "wompi-payment-status",
+          position: "bottom-center",
+        });
+      } catch {
+        if (!isActive) {
+          return;
+        }
+
+        toast.error("No se pudo validar el estado del pago.", {
+          id: "wompi-payment-status",
+          position: "bottom-center",
+        });
+      } finally {
+        if (isActive) {
+          setIsCheckingPayment(false);
+        }
+      }
+    };
+
+    void verifyPayment();
+
+    return () => {
+      isActive = false;
+    };
+  }, [clearCart, searchParams, setSearchParams]);
 
   if (items.length === 0) {
     return (
@@ -174,9 +306,10 @@ export default function CheckOut() {
             <button
               type="button"
               onClick={handlePay}
+              disabled={isPaying || isCheckingPayment}
               className="w-full rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
             >
-              Ir a pagar
+              {isPaying ? "Redirigiendo..." : isCheckingPayment ? "Verificando pago..." : "Ir a pagar"}
             </button>
             <Link
               to="/"

@@ -1,44 +1,97 @@
 import crypto from "node:crypto";
 
 import { ServiceError } from "../errors/service.error";
-import { CartItem, Order, Product } from "../models";
+import { CartItem, Order, Product, User } from "../models";
 
 const allowedStatuses = ["APPROVED", "DECLINED", "PENDING"] as const;
+const checkoutCurrency = "COP";
 
 type CheckoutInput = {
-  forcedStatus?: (typeof allowedStatuses)[number];
+  items?: Array<{
+    productId: string;
+    quantity: number;
+  }>;
 };
 
-type WebhookPayload = {
-  data?: {
-    transaction?: {
-      reference?: string;
-      status?: "APPROVED" | "DECLINED" | "PENDING";
-    };
-  };
+type WebhookPayload = Record<string, unknown>;
+
+const getNestedValue = (value: unknown, path: string): string => {
+  const nestedValue = path
+    .split(".")
+    .reduce<unknown>((acc, segment) => (acc && typeof acc === "object" ? (acc as Record<string, unknown>)[segment] : undefined), value);
+
+  if (nestedValue === undefined || nestedValue === null) {
+    return "";
+  }
+
+  return String(nestedValue);
 };
+
+const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
 export class PaymentsService {
-  async checkoutWithWompi(userId: string, input: CheckoutInput) {
-    const { forcedStatus } = input;
+  private async syncCartItems(userId: string, items: CheckoutInput["items"]) {
+    if (!items || items.length === 0) {
+      return;
+    }
 
-    if (forcedStatus && !allowedStatuses.includes(forcedStatus)) {
+    const normalizedItems = items
+      .filter((item) => item.productId && Number.isInteger(item.quantity) && item.quantity > 0)
+      .map((item) => ({ productId: item.productId, quantity: item.quantity }));
+
+    if (!normalizedItems.length) {
+      throw new ServiceError(400, "items payload is invalid");
+    }
+
+    await CartItem.destroy({ where: { userId } });
+    await CartItem.bulkCreate(
+      normalizedItems.map((item) => ({
+        userId,
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+    );
+  }
+
+  private buildCheckoutUrl({
+    amountInCents,
+    reference,
+  }: {
+    amountInCents: number;
+    reference: string;
+  }) {
+    const publicKey = process.env.WOMPI_PUBLIC_KEY;
+    const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
+    const frontendOrigin = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
+
+    if (!publicKey || !integritySecret) {
       throw new ServiceError(
-        400,
-        `forcedStatus must be one of: ${allowedStatuses.join(", ")}`,
+        500,
+        "WOMPI_PUBLIC_KEY and WOMPI_INTEGRITY_SECRET are required",
       );
     }
 
-    const cartItems = await CartItem.findAll({
-      where: { userId },
-      include: [{ model: Product, as: "product" }],
+    const signature = sha256(`${reference}${amountInCents}${checkoutCurrency}${integritySecret}`);
+    const redirectUrl = `${frontendOrigin}/checkout?payment=processing&reference=${encodeURIComponent(reference)}`;
+    const params = new URLSearchParams({
+      "public-key": publicKey,
+      currency: checkoutCurrency,
+      "amount-in-cents": String(amountInCents),
+      reference,
+      "signature:integrity": signature,
+      "redirect-url": redirectUrl,
     });
 
-    if (!cartItems.length) {
-      throw new ServiceError(400, "Cart is empty");
-    }
+    return `https://checkout.wompi.co/p/?${params.toString()}`;
+  }
 
-    for (const item of cartItems) {
+  async checkoutWithWompi(userId: string, customerEmail: string | undefined, input: CheckoutInput) {
+    await this.syncCartItems(userId, input.items);
+
+    for (const item of await CartItem.findAll({
+      where: { userId },
+      include: [{ model: Product, as: "product" }],
+    })) {
       const product = (item as CartItem & { product?: Product }).product;
 
       if (!product || !product.isActive) {
@@ -51,7 +104,10 @@ export class PaymentsService {
     }
 
     const total = Number(
-      cartItems
+      (await CartItem.findAll({
+        where: { userId },
+        include: [{ model: Product, as: "product" }],
+      }))
         .reduce((acc, item) => {
           const product = (item as CartItem & { product?: Product }).product;
           return acc + Number(product?.price ?? 0) * item.quantity;
@@ -65,56 +121,76 @@ export class PaymentsService {
       status: "pending",
     });
 
-    const simulatedStatus =
-      forcedStatus && allowedStatuses.includes(forcedStatus)
-        ? forcedStatus
-        : allowedStatuses[Math.floor(Math.random() * allowedStatuses.length)];
-
-    const wompiTransaction = {
-      id: `wompi_${crypto.randomUUID()}`,
-      reference: `ORDER-${order.id}`,
-      amountInCents: Math.round(total * 100),
-      currency: "COP",
-      status: simulatedStatus,
-      sandbox: true,
-    };
-
-    if (simulatedStatus === "APPROVED") {
-      for (const item of cartItems) {
-        const product = (item as CartItem & { product?: Product }).product;
-
-        if (!product) {
-          throw new ServiceError(400, "Cart contains unavailable products");
-        }
-
-        product.stock -= item.quantity;
-        await product.save();
-      }
-
-      order.status = "paid";
-      await order.save();
-      await CartItem.destroy({ where: { userId } });
-    }
-
-    if (simulatedStatus === "DECLINED") {
-      order.status = "cancelled";
-      await order.save();
-    }
+    const reference = `ORDER-${order.id}`;
+    const amountInCents = Math.round(total * 100);
+    const checkoutUrl = this.buildCheckoutUrl({ amountInCents, reference });
 
     return {
       data: {
         order,
-        wompi: wompiTransaction,
-        message: "Wompi sandbox checkout simulated",
+        wompi: {
+          sandbox: true,
+          reference,
+          amountInCents,
+          currency: checkoutCurrency,
+          customerEmail,
+          checkoutUrl,
+        },
+        message: "Wompi sandbox checkout created",
       },
     };
   }
 
-  async processWompiWebhook(payload: WebhookPayload) {
-    const reference = payload.data?.transaction?.reference;
-    const status = payload.data?.transaction?.status;
+  private validateWebhookSignature(payload: WebhookPayload) {
+    const eventsSecret = process.env.WOMPI_EVENTS_SECRET;
+    if (!eventsSecret) {
+      return;
+    }
 
-    if (!reference || !status || !reference.startsWith("ORDER-")) {
+    const signature = (payload.signature ?? {}) as {
+      checksum?: string;
+      properties?: string[];
+    };
+
+    const timestamp = payload.timestamp;
+    const checksum = signature.checksum;
+    const properties = signature.properties;
+
+    if (!checksum || !timestamp || !Array.isArray(properties) || properties.length === 0) {
+      throw new ServiceError(400, "Invalid webhook signature payload");
+    }
+
+    const concatenated = properties.map((propertyPath) => getNestedValue(payload.data, propertyPath)).join("");
+    const computedChecksum = sha256(`${concatenated}${timestamp}${eventsSecret}`);
+
+    if (computedChecksum !== checksum) {
+      throw new ServiceError(401, "Webhook signature verification failed");
+    }
+  }
+
+  private getTransactionFromWebhook(payload: WebhookPayload) {
+    const directTransaction = (payload.data as { transaction?: unknown } | undefined)?.transaction;
+    const nestedTransaction = (
+      payload.data as { transaction?: unknown; payload?: { transaction?: unknown } } | undefined
+    )?.payload?.transaction;
+
+    const transaction = (directTransaction ?? nestedTransaction ?? {}) as {
+      reference?: string;
+      status?: string;
+    };
+
+    return {
+      reference: transaction.reference,
+      status: transaction.status,
+    };
+  }
+
+  async processWompiWebhook(payload: WebhookPayload) {
+    this.validateWebhookSignature(payload);
+
+    const { reference, status } = this.getTransactionFromWebhook(payload);
+
+    if (!reference || !status || !allowedStatuses.includes(status as (typeof allowedStatuses)[number]) || !reference.startsWith("ORDER-")) {
       throw new ServiceError(400, "Invalid webhook payload");
     }
 
@@ -134,6 +210,21 @@ export class PaymentsService {
     }
 
     if (status === "APPROVED") {
+      const cartItems = await CartItem.findAll({
+        where: { userId: order.userId },
+        include: [{ model: Product, as: "product" }],
+      });
+
+      for (const item of cartItems) {
+        const product = (item as CartItem & { product?: Product }).product;
+        if (!product || item.quantity > product.stock) {
+          throw new ServiceError(400, "Unable to fulfill paid order due to stock mismatch");
+        }
+
+        product.stock -= item.quantity;
+        await product.save();
+      }
+
       order.status = "paid";
       await order.save();
       await CartItem.destroy({ where: { userId: order.userId } });
@@ -145,6 +236,31 @@ export class PaymentsService {
     }
 
     return { message: "Webhook processed" };
+  }
+
+  async getWompiPaymentStatus(userId: string, reference: string) {
+    if (!reference || !reference.startsWith("ORDER-")) {
+      throw new ServiceError(400, "reference is required and must start with ORDER-");
+    }
+
+    const orderId = reference.replace("ORDER-", "");
+    const order = await Order.findByPk(orderId);
+
+    if (!order) {
+      throw new ServiceError(404, "Order not found");
+    }
+
+    if (order.userId !== userId) {
+      throw new ServiceError(403, "Insufficient permissions");
+    }
+
+    return {
+      data: {
+        reference,
+        orderId: order.id,
+        status: order.status,
+      },
+    };
   }
 }
 

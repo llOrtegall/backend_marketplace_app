@@ -1,33 +1,41 @@
-import { app } from "./app";
-import { sequelize } from "./config/database";
-import { initModels } from "./models";
+import { PORT, CORS_ORIGINS, FRONTEND_ORIGIN } from "./schema/envSchema";
+import { toNodeHandler } from "better-auth/node";
+import { auth } from "./lib/auth";
+import express from "express";
+import logger from "morgan";
+import cors from "cors";
 
-const port = Number(process.env.PORT ?? 3000);
+import { apiRouter } from "./routes";
 
-const startServer = async () => {
-  try {
-    initModels();
-    await sequelize.authenticate();
-    console.log("Database connection established");
+export const app = express();
 
-    const schema = process.env.DATABASE_STORE_SCHEMA ?? "public";
-    await sequelize.query(
-      `ALTER TABLE "${schema}"."CartItems" DROP CONSTRAINT IF EXISTS "CartItems_userId_fkey";`,
-    );
-    await sequelize.query(
-      `ALTER TABLE "${schema}"."Orders" DROP CONSTRAINT IF EXISTS "Orders_userId_fkey";`,
-    );
+app.use(cors({
+  origin: CORS_ORIGINS,
+  credentials: true,
+}));
+app.use(express.json());
+app.use(logger("dev"));
+app.use(express.urlencoded({ extended: true }));
 
-    await sequelize.sync();
-    console.log("Database models synchronized");
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "ecommerce-backend",
+    timestamp: new Date().toISOString(),
+  });
+});
 
-    app.listen(port, () => {
-      console.log(`Backend running on http://localhost:${port}`);
-    });
-  } catch (error) {
-    console.error("Unable to connect to the database", error);
-    process.exit(1);
-  }
-};
+app.get("/api/auth/error", (req, res) => {
+  const frontendOrigin = FRONTEND_ORIGIN;
+  const errorCode = Array.isArray(req.query.error) ? req.query.error[0] : req.query.error;
+  const authStatus = errorCode === "access_denied" ? "cancelled" : "error";
+  res.redirect(`${frontendOrigin}/?auth=${authStatus}`);
+});
 
-void startServer();
+app.all("/api/auth/{*any}", toNodeHandler(auth));
+
+app.use("/api/v1", apiRouter);
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

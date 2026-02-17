@@ -1,4 +1,4 @@
-import { UserRound, UserRoundCheck } from "lucide-react";
+import { ShoppingBagIcon, UserRound, UserRoundCheck } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 import ShoppingCartButton from "./ShoppingCartButton";
 import { Link } from "react-router";
@@ -53,9 +53,10 @@ export default function Header() {
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="container mx-auto px-4 py-2 flex justify-between items-center">
         <figure className="flex items-center space-x-2">
-          <img src="/src/assets/logo.png" width={120} height={80} alt="Logo de la Tienda" />
+          <ShoppingBagIcon className="size-6 text-gray-700" />
+          <figcaption className="text-lg font-bold text-gray-900">Store Aidee</figcaption>
         </figure>
 
         <nav className="hidden md:flex">

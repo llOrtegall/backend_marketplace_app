@@ -22,11 +22,11 @@ export default function ShoppingCartButton() {
     const removed = await removeFromCart(productId);
 
     if (!removed) {
-      toast.error("No se pudo remover el producto del carrito");
+      toast.error("No se pudo remover el producto del carrito", { position: "bottom-center" });
       return;
     }
 
-    toast.success("Producto removido del carrito");
+    toast.success("Producto removido del carrito", { position: "bottom-center" });
   };
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function ShoppingCartButton() {
         <ShoppingCart className="size-8" />
 
         {itemsCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-black px-1.5 text-[10px] font-semibold text-white">
+          <span className="absolute -right-0.5 -top-0.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-pink-700 px-1 text-sm font-semibold text-white">
             {itemsCount > 99 ? "99+" : itemsCount}
           </span>
         )}

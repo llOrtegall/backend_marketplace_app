@@ -1,9 +1,9 @@
-import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
+import ProductCard from "@/components/ProductCard";
+import { useCart } from "@/contexts/CartContext";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
-import { useCart } from "@/contexts/CartContext";
-import ProductCard from "@/components/ProductCard";
+import axios from "axios";
 
 type Product = {
   id: string;
@@ -73,22 +73,22 @@ export default function Home() {
     });
 
     if (success) {
-      toast.success("Producto agregado al carrito");
+      toast.success("Producto agregado al carrito", { position: "bottom-center" });
       return;
     }
 
-    toast.error("No hay más stock disponible para este producto");
+    toast.error("No hay más stock disponible para este producto", { position: "bottom-center" });
   };
 
   const handleRemoveFromCart = async (productId: string) => {
     const success = await removeFromCart(productId);
 
     if (success) {
-      toast.success("Producto removido del carrito");
+      toast.success("Producto removido del carrito", { position: "bottom-center" });
       return;
     }
 
-    toast.error("No se pudo remover el producto del carrito");
+    toast.error("No se pudo remover el producto del carrito", { position: "bottom-center" });
   };
 
   return (

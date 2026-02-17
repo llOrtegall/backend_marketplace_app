@@ -55,7 +55,7 @@ export default function ProductCard({
               type="button"
               onClick={() => onRemoveFromCart(product.id)}
               disabled={isCartLoading}
-              className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-60"
+              className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 cursor-pointer disabled:opacity-60"
             >
               Quitar del carrito
             </button>
@@ -64,7 +64,7 @@ export default function ProductCard({
               type="button"
               onClick={() => onAddToCart(product)}
               disabled={isCartLoading || product.stock < 1}
-              className="w-full rounded-xl bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
+              className="w-full rounded-xl bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 cursor-pointer disabled:opacity-60"
             >
               {product.stock < 1 ? "Sin stock" : "Agregar al carrito"}
             </button>

@@ -1,5 +1,4 @@
 import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional } from "sequelize";
-
 import { sequelize } from "../config/database";
 
 export class Order extends Model<InferAttributes<Order>, InferCreationAttributes<Order>> {

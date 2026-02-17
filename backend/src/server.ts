@@ -1,5 +1,6 @@
 import { PORT, CORS_ORIGINS, FRONTEND_ORIGIN } from "./schema/envSchema";
 import { toNodeHandler } from "better-auth/node";
+import { initDatabase } from "./config/init";
 import { auth } from "./lib/auth";
 import express from "express";
 import logger from "morgan";
@@ -40,5 +41,6 @@ app.all("/api/auth/{*any}", toNodeHandler(auth));
 app.use("/api/v1", apiRouter);
 
 app.listen(PORT, () => {
+  initDatabase();
   console.log(`Server is running on port ${PORT}`);
 });

@@ -9,6 +9,9 @@ import { apiRouter } from "./routes";
 
 export const app = express();
 
+app.disable("x-powered-by");
+app.set("trust proxy", true);
+
 app.use(cors({
   origin: CORS_ORIGINS,
   credentials: true,

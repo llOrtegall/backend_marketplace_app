@@ -6,6 +6,7 @@ export class Product extends Model<InferAttributes<Product>, InferCreationAttrib
   declare id: CreationOptional<string>;
   declare name: string;
   declare description: CreationOptional<string | null>;
+  declare value: string;
   declare price: string;
   declare image: string;
   declare stock: CreationOptional<number>;
@@ -17,7 +18,7 @@ export class Product extends Model<InferAttributes<Product>, InferCreationAttrib
 Product.init(
   {
     id: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
@@ -33,6 +34,13 @@ Product.init(
     image: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    value: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false,
+      validate: {
+        min: 0,
+      },
     },
     price: {
       type: DataTypes.DECIMAL(10, 2),

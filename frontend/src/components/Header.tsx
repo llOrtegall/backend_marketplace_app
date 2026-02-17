@@ -54,10 +54,12 @@ export default function Header() {
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
       <div className="container mx-auto px-4 py-2 flex justify-between items-center">
-        <figure className="flex items-center space-x-2">
-          <ShoppingBagIcon className="size-6 text-gray-700" />
-          <figcaption className="text-lg font-bold text-gray-900">Store Aidee</figcaption>
-        </figure>
+        <Link to="/" className="flex items-center space-x-2">
+          <figure className="flex items-center space-x-2">
+            <ShoppingBagIcon className="size-6 text-gray-700" />
+            <figcaption className="text-lg font-bold text-gray-900">Store Aidee</figcaption>
+          </figure>
+        </Link>
 
         <nav className="hidden md:flex">
           <ul className="flex space-x-8">

@@ -22,6 +22,8 @@ type CartContextValue = {
   isCartLoading: boolean;
   isInCart: (productId: string) => boolean;
   addToCart: (product: ProductInCart) => Promise<boolean>;
+  incrementItemQuantity: (productId: string) => Promise<boolean>;
+  decrementItemQuantity: (productId: string) => Promise<boolean>;
   removeFromCart: (productId: string) => Promise<boolean>;
   refreshCart: () => void;
 };
@@ -125,18 +127,91 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return added;
   }, []);
 
-  const removeFromCart = useCallback(async (productId: string) => {
-    const existing = items.some((item) => item.product.id === productId);
-    if (!existing) return false;
+  const incrementItemQuantity = useCallback(async (productId: string) => {
+    let increased = false;
 
     setItems((prev) => {
+      const existing = prev.find((item) => item.product.id === productId);
+      if (!existing) {
+        return prev;
+      }
+
+      if (existing.quantity >= existing.product.stock) {
+        return prev;
+      }
+
+      increased = true;
+
+      const next = prev.map((item) => {
+        if (item.product.id !== productId) return item;
+
+        const quantity = item.quantity + 1;
+        return {
+          ...item,
+          quantity,
+          subtotal: Number((Number(item.product.price) * quantity).toFixed(2)),
+        };
+      });
+
+      writeStoredCart(next);
+      return next;
+    });
+
+    return increased;
+  }, []);
+
+  const decrementItemQuantity = useCallback(async (productId: string) => {
+    let decreased = false;
+
+    setItems((prev) => {
+      const existing = prev.find((item) => item.product.id === productId);
+      if (!existing) {
+        return prev;
+      }
+
+      decreased = true;
+
+      if (existing.quantity <= 1) {
+        const next = prev.filter((item) => item.product.id !== productId);
+        writeStoredCart(next);
+        return next;
+      }
+
+      const next = prev.map((item) => {
+        if (item.product.id !== productId) return item;
+
+        const quantity = item.quantity - 1;
+        return {
+          ...item,
+          quantity,
+          subtotal: Number((Number(item.product.price) * quantity).toFixed(2)),
+        };
+      });
+
+      writeStoredCart(next);
+      return next;
+    });
+
+    return decreased;
+  }, []);
+
+  const removeFromCart = useCallback(async (productId: string) => {
+    let removed = false;
+
+    setItems((prev) => {
+      const existing = prev.some((item) => item.product.id === productId);
+      if (!existing) {
+        return prev;
+      }
+
+      removed = true;
       const next = prev.filter((item) => item.product.id !== productId);
       writeStoredCart(next);
       return next;
     });
 
-    return true;
-  }, [items]);
+    return removed;
+  }, []);
 
   const isInCart = useCallback(
     (productId: string) => items.some((item) => item.product.id === productId),
@@ -161,10 +236,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isCartLoading,
       isInCart,
       addToCart,
+      incrementItemQuantity,
+      decrementItemQuantity,
       removeFromCart,
       refreshCart,
     }),
-    [items, total, itemsCount, isCartLoading, isInCart, addToCart, removeFromCart, refreshCart],
+    [
+      items,
+      total,
+      itemsCount,
+      isCartLoading,
+      isInCart,
+      addToCart,
+      incrementItemQuantity,
+      decrementItemQuantity,
+      removeFromCart,
+      refreshCart,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

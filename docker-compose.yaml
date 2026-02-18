@@ -1,0 +1,26 @@
+services:
+  web:
+    image: nginx:stable-alpine3.19-slim
+    container_name: marketplace
+    restart: always
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api-marktplace-v1
+    networks:
+      - ortega
+
+  api-marktplace-v1:
+    build: ./backend
+    image: api-marktplace:v1.0
+    container_name: api_marktplace_v1
+    restart: always
+    environment:
+      - TZ=America/Bogota
+    networks:
+      - ortega
+
+networks:
+  ortega:
+    external: true

@@ -1,26 +1,66 @@
-import { useSession, signOut } from "@/lib/auth-client";
+import { ShoppingBagIcon, UserRound, UserRoundCheck } from "lucide-react";
+import { signOut, useSession } from "@/lib/auth-client";
+import ShoppingCartButton from "./ShoppingCartButton";
 import { Link } from "react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export default function Header() {
-  const [searchQuery, setSearchQuery] = useState("");
   const { data } = useSession();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = (e: React.ChangeEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Implement search logic here, e.g., navigate to search results page
-    console.log("Searching for:", searchQuery);
+  const handleClickProfile = () => {
+    setShowProfileMenu((prev) => !prev);
   };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Sesión cerrada correctamente");
+    } catch {
+      toast.error("No se pudo cerrar sesión");
+    } finally {
+      setShowProfileMenu(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showProfileMenu) {
+      return;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [showProfileMenu]);
 
   return (
     <header className="bg-white border-b border-gray-200 shadow-sm">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        {/* Logo and Brand */}
-        <figure className="flex items-center space-x-2">
-          <img src="/src/assets/logo.png" width={120} height={80} alt="Logo de la Tienda" />
-        </figure>
+      <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+        <Link to="/" className="flex items-center space-x-2">
+          <figure className="flex items-center space-x-2">
+            <ShoppingBagIcon className="size-6 text-gray-700" />
+            <figcaption className="text-lg font-bold text-gray-900">Store Aidee</figcaption>
+          </figure>
+        </Link>
 
-        {/* Navigation */}
         <nav className="hidden md:flex">
           <ul className="flex space-x-8">
             <li>
@@ -36,58 +76,65 @@ export default function Header() {
           </ul>
         </nav>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearch} className="flex-1 max-w-sm mx-4">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar productos..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full py-2 px-4 border border-gray-300 rounded-md text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-400 focus:border-gray-400"
-            />
-            <button
-              type="submit"
-              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-            >
-              🔍
-            </button>
-          </div>
-        </form>
-
         <section className="flex items-center space-x-4">
-          {
-            data?.user ? (
-              <>
-                {
-                  data.user.image ? (
-                    <img src={data.user.image || '/src/assets/default-avatar.png'} alt="Avatar del usuario" className="size-8 rounded-full object-cover" />
-                  ) : (
-                    <figure className="size-8 p-1.5 rounded-full bg-gray-300 flex items-center justify-center">
-                      <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="#000000"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="m 8 1 c -1.65625 0 -3 1.34375 -3 3 s 1.34375 3 3 3 s 3 -1.34375 3 -3 s -1.34375 -3 -3 -3 z m -1.5 7 c -2.492188 0 -4.5 2.007812 -4.5 4.5 v 0.5 c 0 1.109375 0.890625 2 2 2 h 8 c 1.109375 0 2 -0.890625 2 -2 v -0.5 c 0 -2.492188 -2.007812 -4.5 -4.5 -4.5 z m 0 0" fill="#2e3436"></path> </g></svg>
-                    </figure>
-                  )
-                }
-                <span className="text-gray-700 font-medium">{data.user.name}</span>
-                <button
-                  onClick={() => signOut()}
-                  className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium cursor-pointer"
-                >
-                  Cerrar sesión
-                </button>
-              </>
+          <div className="relative" ref={profileMenuRef}>
+            {data?.user ? (
+              <button
+                type="button"
+                onClick={handleClickProfile}
+                aria-expanded={showProfileMenu}
+                aria-haspopup="menu"
+                className="flex items-center gap-2 rounded-xl cursor-pointer px-2 py-1 text-gray-700 transition-colors duration-200 hover:bg-gray-100 hover:text-gray-900"
+              >
+                {data.user.image ? (
+                  <img
+                    src={data.user.image}
+                    loading="lazy"
+                    alt="Avatar del usuario"
+                    className="size-8 rounded-full object-cover ring-1 ring-gray-200"
+                  />
+                ) : (
+                  <UserRoundCheck className="size-8 text-gray-700" />
+                )}
+                <p className="hidden text-sm font-medium sm:block">{data.user.name}</p>
+              </button>
             ) : (
-              <Link to="/login" className="text-gray-700 hover:text-gray-900 transition-colors duration-200 font-medium">
-                Iniciar sesión
+              <Link to="/login" className="flex items-center font-medium text-gray-700 hover:text-gray-900 transition-colors duration-200">
+                <UserRound className="size-8 text-gray-700" />
+                <p className="mt-0.5">Iniciar sesión</p>
               </Link>
-            )
-          }
-        </section>
+            )}
 
-        {/* Mobile Menu Button */}
-        <button className="md:hidden text-gray-700">
-          ☰
-        </button>
+            {showProfileMenu && (
+              <div className="absolute right-0 mt-3 w-56 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg z-20">
+                <div className="border-b border-gray-100 px-4 py-3">
+                  <p className="text-sm font-semibold text-gray-900">{data?.user?.name}</p>
+                  <p className="mt-0.5 truncate text-xs text-gray-500">{data?.user?.email}</p>
+                </div>
+                <ul className="py-1">
+                  <li>
+                    <button
+                      type="button"
+                      className="w-full px-4 py-2 text-left text-sm cursor-pointer text-gray-700 transition-colors hover:bg-gray-100"
+                    >
+                      Perfil
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="w-full px-4 py-2 text-left text-sm cursor-pointer text-red-600 transition-colors hover:bg-red-50"
+                    >
+                      Cerrar sesión
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
+          </div>
+          <ShoppingCartButton />
+        </section>
       </div>
     </header>
   );

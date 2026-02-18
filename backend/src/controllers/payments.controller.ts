@@ -12,7 +12,10 @@ export const wompiCheckout = async (
   try {
     const result = await paymentsService.checkoutWithWompi(
       String(req.user?.id),
-      req.body as { forcedStatus?: "APPROVED" | "DECLINED" | "PENDING" },
+      req.user?.email,
+      req.body as {
+        items?: Array<{ productId: string; quantity: number }>;
+      },
     );
 
     return res.status(201).json(result);
@@ -24,14 +27,24 @@ export const wompiCheckout = async (
 export const wompiWebhook = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await paymentsService.processWompiWebhook(
-      req.body as {
-        data?: {
-          transaction?: {
-            reference?: string;
-            status?: "APPROVED" | "DECLINED" | "PENDING";
-          };
-        };
-      },
+      req.body as Record<string, unknown>,
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return handleControllerError(error, res, next);
+  }
+};
+
+export const wompiPaymentStatus = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await paymentsService.getWompiPaymentStatus(
+      String(req.user?.id),
+      String(req.query.reference ?? ""),
     );
 
     return res.status(200).json(result);

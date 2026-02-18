@@ -7,7 +7,8 @@ import {
   listProducts,
   updateProductById,
 } from "../controllers/products.controller";
-import { requireAuth, requireRole } from "../middleware/auth.middleware";
+import { requireAdmin, requireAuth } from "../middleware/auth.middleware";
+import { uploadSingleProductImage } from "../middleware/upload.middleware";
 
 const productsRouter = Router();
 
@@ -15,10 +16,10 @@ productsRouter.get("/", listProducts);
 
 productsRouter.get("/:id", getProductById);
 
-productsRouter.post("/", requireAuth, requireRole(["admin"]), createProduct);
+productsRouter.post("/", requireAuth, requireAdmin, uploadSingleProductImage, createProduct);
 
-productsRouter.put("/:id", requireAuth, requireRole(["admin"]), updateProductById);
+productsRouter.put("/:id", requireAuth, requireAdmin, updateProductById);
 
-productsRouter.delete("/:id", requireAuth, requireRole(["admin"]), deactivateProductById);
+productsRouter.delete("/:id", requireAuth, requireAdmin, deactivateProductById);
 
 export { productsRouter };

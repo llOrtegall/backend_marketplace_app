@@ -1,30 +1,41 @@
 import type { NextFunction, Request, Response } from "express";
+import { fromNodeHeaders } from "better-auth/node";
 
+import { auth } from "../lib/auth";
 import type { AuthRole, AuthUserPayload } from "../types/auth";
-import { verifyAccessToken } from "../utils/tokens";
 
 export type AuthenticatedRequest = Request & {
   user?: AuthUserPayload;
 };
 
-export const requireAuth = (
+export const requireAuth = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ) => {
-  const authorization = req.headers.authorization;
-
-  if (!authorization?.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Missing or invalid authorization header" });
-  }
-
-  const token = authorization.slice(7);
-
   try {
-    req.user = verifyAccessToken(token);
+    const session = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+    });
+
+    if (!session?.user) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+
+    const userRole = session.user.role;
+    if (userRole !== "admin" && userRole !== "customer") {
+      return res.status(403).json({ message: "Invalid user role" });
+    }
+
+    req.user = {
+      id: String(session.user.id),
+      email: String(session.user.email),
+      role: userRole,
+    };
+
     return next();
   } catch {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return res.status(401).json({ message: "Invalid or expired session" });
   }
 };
 
@@ -43,3 +54,5 @@ export const requireRole = (roles: AuthRole[]) => (
 
   return next();
 };
+
+export const requireAdmin = requireRole(["admin"]);

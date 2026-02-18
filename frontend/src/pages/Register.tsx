@@ -81,7 +81,7 @@ export default function Register() {
         name: fullName,
         email: parsedForm.data.email.trim().toLowerCase(),
         password: parsedForm.data.password,
-        callbackURL: "http://localhost:5173/?auth=success",
+        callbackURL: `${import.meta.env.VITE_AUTH_BASE_URL ?? "http://localhost:5173"}/?auth=success`,
       });
 
       if (result.error) {

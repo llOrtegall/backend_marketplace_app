@@ -26,7 +26,10 @@ class ProductsService implements ProductRepository {
   }
 
   createProduct = async (data: Omit<Product, "id" | "createdAt" | "updatedAt">): Promise<Product> => {
-    throw new Error("Method not implemented.");
+    //firts step upload image to R2 servicer in Cloduflare
+
+    const newProduct = await Product.create(data);
+    return newProduct;
   }
 
   updateProduct(id: string, data: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>): Promise<Product | null> {

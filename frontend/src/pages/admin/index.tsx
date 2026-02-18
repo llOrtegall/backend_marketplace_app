@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent, type SubmitEvent } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 import { z } from "zod";
@@ -22,7 +22,7 @@ export default function AdminPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!imageFile) {
@@ -68,7 +68,7 @@ export default function AdminPage() {
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">Panel admin</h1>
         <p className="mt-2 text-sm text-gray-600">Crea productos con imagen privada en Cloudflare R2.</p>
 
-        <form onSubmit={handleSubmit} className="mt-8 grid gap-5">
+        <form onSubmit={(e) => handleSubmit(e)} className="mt-8 grid gap-5">
           <div className="grid gap-2">
             <label htmlFor="name" className="text-sm font-medium text-gray-700">Nombre</label>
             <input

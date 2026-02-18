@@ -1,7 +1,8 @@
 import { Router } from "express";
 
 import {
-  getAllProducts
+  getAllProducts,
+  createProduct
 } from "../controllers/products.controller";
 import { requireAdmin, requireAuth } from "../middleware/auth.middleware";
 import { uploadSingleProductImage } from "../middleware/upload.middleware";
@@ -12,7 +13,7 @@ productsRouter.get("/", getAllProducts);
 
 // productsRouter.get("/:id", getProductById);
 
-// productsRouter.post("/", requireAuth, requireAdmin, uploadSingleProductImage, createProduct);
+productsRouter.post("/", requireAuth, requireAdmin, uploadSingleProductImage, createProduct);
 
 // productsRouter.put("/:id", requireAuth, requireAdmin, updateProductById);
 

@@ -18,3 +18,20 @@ export const getAllProducts = async (req: Request, res: Response) => {
     res.status(500).json({ message: "An error occurred while fetching products." });
   }
 };
+
+export const createProduct = async (req: Request, res: Response) => {
+  try {
+    console.log(req.body);
+
+    res.status(201).json({ message: "Product created successfully." });
+  } catch (error) {
+    if (error instanceof BaseError && error.name === "SequelizeDatabaseError") {
+      console.error("Database error:", error.message);
+      res.status(500).json({ message: "A database error occurred while creating the product." });
+      return;
+    }
+
+    console.error("Unexpected error:", error);
+    res.status(500).json({ message: "An error occurred while creating the product." });
+  }
+}

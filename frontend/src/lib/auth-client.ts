@@ -1,7 +1,7 @@
 import { createAuthClient } from "better-auth/react"
 
 const rawBase = import.meta.env.VITE_AUTH_BASE_URL
-let baseURL = rawBase ?? "http://localhost:3000"
+let baseURL = rawBase ?? "http://localhost:5000"
 
 if (rawBase && rawBase.startsWith("/")) {
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost"

@@ -1,6 +1,7 @@
 import { DataTypes, Model, type InferAttributes, type InferCreationAttributes, type CreationOptional } from "sequelize";
 
 import { sequelize } from "../config/database";
+import { Image } from "./images.model";
 
 export class Product extends Model<InferAttributes<Product>, InferCreationAttributes<Product>> {
   declare id: CreationOptional<string>;
@@ -69,3 +70,14 @@ Product.init(
     sequelize,
   },
 );
+
+// Associations
+Product.hasMany(Image, {
+  foreignKey: 'productId',
+  as: 'images',
+  onDelete: 'CASCADE',
+});
+Image.belongsTo(Product, {
+  foreignKey: 'productId',
+  as: 'product',
+});

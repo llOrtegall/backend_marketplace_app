@@ -1,5 +1,6 @@
 import { Product } from "../models/product.model";
 import type { ProductRepository } from "./repository/Product";
+import { ServiceError } from "../errors/service.error";
 
 class ProductsService implements ProductRepository {
   private static instance: ProductsService;
@@ -21,26 +22,44 @@ class ProductsService implements ProductRepository {
     return products;
   }
 
-  getProductById(id: string): Promise<Product | null> {
-    throw new Error("Method not implemented.");
+  getProductById = async (id: string): Promise<Product | null> => {
+    const product = await Product.findByPk(id, {
+      attributes: { exclude: ['createdAt', 'updatedAt'] },
+    });
+
+    if (!product) {
+      throw new ServiceError(404, "Product not found");
+    }
+
+    return product;
   }
 
   createProduct = async (data: Omit<Product, "id" | "createdAt" | "updatedAt">): Promise<Product> => {
-    //firts step upload image to R2 servicer in Cloduflare
-
     const newProduct = await Product.create(data);
     return newProduct;
   }
 
-  updateProduct(id: string, data: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>): Promise<Product | null> {
-    throw new Error("Method not implemented.");
+  updateProduct = async (id: string, data: Partial<Omit<Product, "id" | "createdAt" | "updatedAt">>): Promise<Product | null> => {
+    const product = await Product.findByPk(id);
+
+    if (!product) {
+      throw new ServiceError(404, "Product not found");
+    }
+
+    await product.update(data);
+    return product;
   }
 
-  deactivateProduct(id: string): Promise<void> {
-    throw new Error("Method not implemented.");
+  deactivateProduct = async (id: string): Promise<void> => {
+    const product = await Product.findByPk(id);
+
+    if (!product) {
+      throw new ServiceError(404, "Product not found");
+    }
+
+    await product.update({ isActive: false });
   }
 
 }
 
 export const productsService = ProductsService.getInstance();
-

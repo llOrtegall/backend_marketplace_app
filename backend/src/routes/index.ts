@@ -6,6 +6,6 @@ import { productsRouter } from "./products.routes";
 const apiRouter = Router();
 
 apiRouter.use("/products", productsRouter);
-// apiRouter.use("/payments", paymentsRouter);
+apiRouter.use("/payments", paymentsRouter);
 
 export { apiRouter };

@@ -6,6 +6,6 @@ COPY . /app
 
 RUN bun install
 
-EXPOSE 3000
+EXPOSE 80
 
-CMD ["bun", "run", "index.ts"]
+CMD ["bun", "run", "src/server.ts"]

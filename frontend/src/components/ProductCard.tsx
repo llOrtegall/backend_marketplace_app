@@ -11,7 +11,6 @@ type Product = {
 type ProductCardProps = {
   product: Product;
   isInCart: boolean;
-  isCartLoading: boolean;
   onAddToCart: (product: Product) => void;
   onRemoveFromCart: (productId: string) => void;
 };
@@ -19,7 +18,6 @@ type ProductCardProps = {
 export default function ProductCard({
   product,
   isInCart,
-  isCartLoading,
   onAddToCart,
   onRemoveFromCart,
 }: ProductCardProps) {
@@ -54,8 +52,7 @@ export default function ProductCard({
             <button
               type="button"
               onClick={() => onRemoveFromCart(product.id)}
-              disabled={isCartLoading}
-              className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 cursor-pointer disabled:opacity-60"
+              className="w-full rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-100 cursor-pointer"
             >
               Quitar del carrito
             </button>
@@ -63,7 +60,7 @@ export default function ProductCard({
             <button
               type="button"
               onClick={() => onAddToCart(product)}
-              disabled={isCartLoading || product.stock < 1}
+              disabled={product.stock < 1}
               className="w-full rounded-xl bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800 cursor-pointer disabled:opacity-60"
             >
               {product.stock < 1 ? "Sin stock" : "Agregar al carrito"}

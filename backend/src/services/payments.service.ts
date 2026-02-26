@@ -5,7 +5,7 @@ import { ServiceError } from "../errors/service.error";
 import { sequelize } from "../config/database";
 import { CartItem, Order, OrderItem, Product } from "../models";
 
-const allowedStatuses = ["APPROVED", "DECLINED", "PENDING"] as const;
+const allowedStatuses = ["APPROVED", "DECLINED", "VOIDED", "ERROR", "PENDING"] as const;
 const checkoutCurrency = "COP";
 
 type CheckoutInput = {
@@ -264,56 +264,163 @@ export class PaymentsService {
         return { message: "Webhook already applied" };
       }
 
-      if (order.status === "cancelled" && status === "DECLINED") {
+      if (
+        order.status === "cancelled" &&
+        (status === "DECLINED" || status === "VOIDED" || status === "ERROR")
+      ) {
         return { message: "Webhook already applied" };
       }
 
       if (status === "APPROVED") {
-        const orderItems = await OrderItem.findAll({
-          where: { orderId: order.id },
-          transaction,
-          lock: transaction.LOCK.UPDATE,
-        });
-
-        if (!orderItems.length) {
-          throw new ServiceError(400, "Order has no items to fulfill");
-        }
-
-        const productIds = [...new Set(orderItems.map((item) => item.productId))];
-        const products = await Product.findAll({
-          where: { id: productIds },
-          transaction,
-          lock: transaction.LOCK.UPDATE,
-        });
-        const productsById = new Map(products.map((product) => [product.id, product]));
-
-        for (const item of orderItems) {
-          const product = productsById.get(item.productId);
-
-          if (!product || !product.isActive) {
-            throw new ServiceError(400, "Unable to fulfill paid order due to product availability");
-          }
-
-          if (item.quantity > product.stock) {
-            throw new ServiceError(400, "Unable to fulfill paid order due to stock mismatch");
-          }
-
-          product.stock -= item.quantity;
-          await product.save({ transaction });
-        }
-
-        order.status = "paid";
-        await order.save({ transaction });
-        await CartItem.destroy({ where: { userId: order.userId }, transaction });
+        await this.fulfillApprovedOrder(order, transaction);
       }
 
-      if (status === "DECLINED") {
+      if (status === "DECLINED" || status === "VOIDED" || status === "ERROR") {
         order.status = "cancelled";
         await order.save({ transaction });
       }
 
       return { message: "Webhook processed" };
     });
+  }
+
+  private async fulfillApprovedOrder(order: Order, transaction: Transaction) {
+    const orderItems = await OrderItem.findAll({
+      where: { orderId: order.id },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!orderItems.length) {
+      throw new ServiceError(400, "Order has no items to fulfill");
+    }
+
+    const productIds = [...new Set(orderItems.map((item) => item.productId))];
+    const products = await Product.findAll({
+      where: { id: productIds },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    const productsById = new Map(products.map((product) => [product.id, product]));
+
+    for (const item of orderItems) {
+      const product = productsById.get(item.productId);
+
+      if (!product || !product.isActive) {
+        throw new ServiceError(400, "Unable to fulfill paid order due to product availability");
+      }
+
+      if (item.quantity > product.stock) {
+        throw new ServiceError(400, "Unable to fulfill paid order due to stock mismatch");
+      }
+
+      product.stock -= item.quantity;
+      await product.save({ transaction });
+    }
+
+    order.status = "paid";
+    await order.save({ transaction });
+    await CartItem.destroy({ where: { userId: order.userId }, transaction });
+  }
+
+  private getWompiApiBaseUrl(): string {
+    const publicKey = process.env.WOMPI_PUBLIC_KEY ?? "";
+    return publicKey.includes("_test_")
+      ? "https://sandbox.wompi.co/v1"
+      : "https://production.wompi.co/v1";
+  }
+
+  async verifyWompiTransaction(userId: string, transactionId: string, reference: string) {
+    if (!transactionId) {
+      throw new ServiceError(400, "transactionId is required");
+    }
+
+    const privateKey = process.env.WOMPI_PRIVATE_KEY;
+
+    if (privateKey) {
+      const apiBase = this.getWompiApiBaseUrl();
+
+      let wompiStatus: string | null = null;
+      let wompiReference: string | null = null;
+
+      try {
+        const res = await fetch(`${apiBase}/transactions/${transactionId}`, {
+          headers: { Authorization: `Bearer ${privateKey}` },
+        });
+
+        if (res.ok) {
+          const body = (await res.json()) as { data: { reference: string; status: string } };
+          wompiStatus = body.data.status;
+          wompiReference = body.data.reference;
+        }
+      } catch {
+        // Wompi API unavailable — fall through to DB fallback
+      }
+
+      if (wompiStatus && wompiReference?.startsWith("ORDER-")) {
+        const orderId = wompiReference.replace("ORDER-", "");
+
+        return sequelize.transaction(async (transaction) => {
+          const order = await Order.findByPk(orderId, {
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          });
+
+          if (!order) {
+            throw new ServiceError(404, "Order not found");
+          }
+
+          if (order.userId !== userId) {
+            throw new ServiceError(403, "Insufficient permissions");
+          }
+
+          if (order.status === "pending") {
+            if (wompiStatus === "APPROVED") {
+              await this.fulfillApprovedOrder(order, transaction);
+            } else if (
+              wompiStatus === "DECLINED" ||
+              wompiStatus === "VOIDED" ||
+              wompiStatus === "ERROR"
+            ) {
+              order.status = "cancelled";
+              await order.save({ transaction });
+            }
+          }
+
+          return {
+            data: {
+              reference: wompiReference!,
+              orderId: order.id,
+              status: order.status,
+            },
+          };
+        });
+      }
+    }
+
+    // Fallback: return current order status from DB (webhook-dependent path)
+    if (!reference?.startsWith("ORDER-")) {
+      throw new ServiceError(400, "Valid reference is required when transactionId cannot be verified");
+    }
+
+    const orderId = reference.replace("ORDER-", "");
+    const order = await Order.findByPk(orderId);
+
+    if (!order) {
+      throw new ServiceError(404, "Order not found");
+    }
+
+    if (order.userId !== userId) {
+      throw new ServiceError(403, "Insufficient permissions");
+    }
+
+    return {
+      data: {
+        reference,
+        orderId: order.id,
+        status: order.status,
+      },
+    };
   }
 
   async getWompiPaymentStatus(userId: string, reference: string) {

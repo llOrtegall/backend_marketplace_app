@@ -52,3 +52,21 @@ export const wompiPaymentStatus = async (
     return handleControllerError(error, res, next);
   }
 };
+
+export const wompiVerifyTransaction = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const result = await paymentsService.verifyWompiTransaction(
+      String(req.user?.id),
+      String(req.query.transactionId ?? ""),
+      String(req.query.reference ?? ""),
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    return handleControllerError(error, res, next);
+  }
+};

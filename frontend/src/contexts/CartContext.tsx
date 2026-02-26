@@ -31,8 +31,8 @@ type CartContextValue = {
   isInCart: (productId: string) => boolean;
   addToCart: (product: ProductInCart) => boolean;
   incrementItemQuantity: (productId: string) => boolean;
-  decrementItemQuantity: (productId: string) => void;
-  removeFromCart: (productId: string) => void;
+  decrementItemQuantity: (productId: string) => boolean;
+  removeFromCart: (productId: string) => boolean;
   clearCart: () => void;
 };
 
@@ -145,12 +145,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
-  /** Decrements quantity; removes item if quantity reaches 0. */
+  /** Decrements quantity; removes item if quantity reaches 0. Returns false if not found. */
   const decrementItemQuantity = useCallback(
-    (productId: string): void => {
+    (productId: string): boolean => {
       const current = itemsRef.current;
       const existing = current.find((i) => i.product.id === productId);
-      if (!existing) return;
+      if (!existing) return false;
 
       const next =
         existing.quantity <= 1
@@ -161,14 +161,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
               return { ...i, quantity, subtotal: round2(Number(i.product.price) * quantity) };
             });
       commit(next);
+      return true;
     },
     [commit],
   );
 
+  /** Removes item from cart. Returns false if not found. */
   const removeFromCart = useCallback(
-    (productId: string): void => {
-      const next = itemsRef.current.filter((i) => i.product.id !== productId);
+    (productId: string): boolean => {
+      const current = itemsRef.current;
+      const exists = current.some((i) => i.product.id === productId);
+      if (!exists) return false;
+      const next = current.filter((i) => i.product.id !== productId);
       commit(next);
+      return true;
     },
     [commit],
   );

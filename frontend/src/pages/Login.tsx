@@ -84,7 +84,7 @@ export default function Login() {
 
         <button
           type="button"
-          onClick={() => signIn.social({ provider: "google", callbackURL: "http://localhost:5173/?auth=success" })}
+          onClick={() => signIn.social({ provider: "google", callbackURL: `${window.location.origin}/?auth=success` })}
           className="w-full flex items-center justify-center space-x-2 border border-gray-300 rounded-md py-2 mb-6 hover:bg-gray-100 transition-colors cursor-pointer"
         >
           <figure className="flex items-center space-x-2 size-6">

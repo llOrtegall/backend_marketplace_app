@@ -119,15 +119,20 @@ export default function CheckOut() {
         })),
       };
 
-      const response = await axios.post<{ data: { wompi: { checkoutUrl: string } } }>(
-        "/payments/wompi/checkout",
-        payload,
-      );
+      const response = await axios.post<{
+        data: { wompi: { checkoutUrl: string; reference: string } };
+      }>("/payments/wompi/checkout", payload);
 
-      const checkoutUrl = response.data?.data?.wompi?.checkoutUrl;
+      const { checkoutUrl, reference } = response.data?.data?.wompi ?? {};
       if (!checkoutUrl) {
         toast.error("No se pudo iniciar el pago con Wompi.", { position: "bottom-center" });
         return;
+      }
+
+      // Persist the order reference so we can recover it even if Wompi strips
+      // our custom query params from the redirect URL on return.
+      if (reference) {
+        sessionStorage.setItem("wompi_pending_reference", reference);
       }
 
       window.location.href = checkoutUrl;
@@ -139,36 +144,66 @@ export default function CheckOut() {
   }, [items, session, isSessionLoading, navigate]);
 
   // ── Payment return handling (Wompi redirect) ──────────────────────────────
+  //
+  // Wompi may strip our custom query params (?payment, ?reference) from the
+  // redirect URL and only send its own: ?id=<TRANSACTION_ID>&env=test.
+  //
+  // To survive this, we persist the order reference in sessionStorage before
+  // redirecting. On return we recover it regardless of URL state.
+  //
+  // Flow (priority order):
+  //  1. `id` param present → call /verify (queries Wompi API directly,
+  //     authoritative, works without webhooks).
+  //  2. No `id` but `reference` present → poll /status (webhook-dependent).
 
   useEffect(() => {
-    const paymentState = searchParams.get("payment");
-    const reference = searchParams.get("reference");
+    const transactionId = searchParams.get("id");     // Wompi's transaction ID
+    const paymentState = searchParams.get("payment"); // Our custom trigger param
+    const urlReference = searchParams.get("reference");
 
-    if (!reference || !paymentState) return;
+    // Trigger on: Wompi transaction ID returned, OR our own payment=processing param
+    const isPaymentReturn = !!(transactionId || paymentState);
+    if (!isPaymentReturn) return;
+
+    // Recover reference from URL or, when Wompi strips our params, from storage
+    const reference = urlReference ?? sessionStorage.getItem("wompi_pending_reference");
+    if (!transactionId && !reference) return;
 
     let active = true;
 
-    const clearPaymentParams = () => {
+    const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+    const cleanup = () => {
+      sessionStorage.removeItem("wompi_pending_reference");
       const next = new URLSearchParams(searchParams);
       next.delete("payment");
       next.delete("reference");
+      next.delete("id");
+      next.delete("env");
       setSearchParams(next, { replace: true });
     };
-
-    const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
     const verifyPayment = async () => {
       setIsCheckingPayment(true);
       try {
         let status: PaymentStatus = "pending";
 
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const res = await axios.get<PaymentStatusResponse>("/payments/wompi/status", {
-            params: { reference },
+        if (transactionId) {
+          // Priority 1: authoritative — queries Wompi API directly
+          const res = await axios.get<PaymentStatusResponse>("/payments/wompi/verify", {
+            params: { transactionId, reference: reference ?? "" },
           });
           status = res.data.data.status;
-          if (status !== "pending") break;
-          await sleep(1200);
+        } else {
+          // Priority 2: poll DB order status (depends on webhook)
+          for (let attempt = 0; attempt < 6; attempt++) {
+            const res = await axios.get<PaymentStatusResponse>("/payments/wompi/status", {
+              params: { reference },
+            });
+            status = res.data.data.status;
+            if (status !== "pending") break;
+            if (attempt < 5) await sleep(2000);
+          }
         }
 
         if (!active) return;
@@ -185,13 +220,11 @@ export default function CheckOut() {
             position: "bottom-center",
           });
         } else {
-          toast.info("Confirmando tu pago, actualiza en unos segundos.", {
+          toast.info("Pago en proceso. Recibirás confirmación cuando sea aprobado.", {
             id: "wompi-status",
             position: "bottom-center",
           });
         }
-
-        clearPaymentParams();
       } catch {
         if (!active) return;
         toast.error("No se pudo validar el estado del pago.", {
@@ -199,7 +232,10 @@ export default function CheckOut() {
           position: "bottom-center",
         });
       } finally {
-        if (active) setIsCheckingPayment(false);
+        if (active) {
+          setIsCheckingPayment(false);
+          cleanup();
+        }
       }
     };
 

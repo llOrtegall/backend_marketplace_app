@@ -1,4 +1,4 @@
-import { ShoppingBagIcon, UserRound, UserRoundCheck } from "lucide-react";
+import { ClipboardList, ShoppingBagIcon, UserRound, UserRoundCheck } from "lucide-react";
 import { signOut, useSession } from "@/lib/auth-client";
 import ShoppingCartButton from "./ShoppingCartButton";
 import { Link } from "react-router";
@@ -113,12 +113,14 @@ export default function Header() {
                 </div>
                 <ul className="py-1">
                   <li>
-                    <button
-                      type="button"
-                      className="w-full px-4 py-2 text-left text-sm cursor-pointer text-gray-700 transition-colors hover:bg-gray-100"
+                    <Link
+                      to="/orders"
+                      onClick={() => setShowProfileMenu(false)}
+                      className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100"
                     >
-                      Perfil
-                    </button>
+                      <ClipboardList className="size-4 text-gray-500" />
+                      Mis pedidos
+                    </Link>
                   </li>
                   <li>
                     <button

@@ -119,15 +119,20 @@ export default function CheckOut() {
         })),
       };
 
-      const response = await axios.post<{ data: { wompi: { checkoutUrl: string } } }>(
-        "/payments/wompi/checkout",
-        payload,
-      );
+      const response = await axios.post<{
+        data: { wompi: { checkoutUrl: string; reference: string } };
+      }>("/payments/wompi/checkout", payload);
 
-      const checkoutUrl = response.data?.data?.wompi?.checkoutUrl;
+      const { checkoutUrl, reference } = response.data?.data?.wompi ?? {};
       if (!checkoutUrl) {
         toast.error("No se pudo iniciar el pago con Wompi.", { position: "bottom-center" });
         return;
+      }
+
+      // Persist the order reference so we can recover it even if Wompi strips
+      // our custom query params from the redirect URL on return.
+      if (reference) {
+        sessionStorage.setItem("wompi_pending_reference", reference);
       }
 
       window.location.href = checkoutUrl;
@@ -140,26 +145,43 @@ export default function CheckOut() {
 
   // ── Payment return handling (Wompi redirect) ──────────────────────────────
   //
-  // Wompi appends ?id=<TRANSACTION_ID> to the redirect URL on top of our own
-  // ?payment=processing&reference=ORDER-xxx params.
+  // Wompi may strip our custom query params (?payment, ?reference) from the
+  // redirect URL and only send its own: ?id=<TRANSACTION_ID>&env=test.
+  //
+  // To survive this, we persist the order reference in sessionStorage before
+  // redirecting. On return we recover it regardless of URL state.
   //
   // Flow (priority order):
-  //  1. If `id` (Wompi transaction ID) is present → call /verify endpoint which
-  //     queries the Wompi API directly for authoritative status and updates the
-  //     order immediately, no webhook needed.
-  //  2. Fallback → poll /status (reads order from DB, depends on webhook arrival).
+  //  1. `id` param present → call /verify (queries Wompi API directly,
+  //     authoritative, works without webhooks).
+  //  2. No `id` but `reference` present → poll /status (webhook-dependent).
 
   useEffect(() => {
-    const paymentState = searchParams.get("payment");
-    const reference = searchParams.get("reference");
-    // Wompi appends the transaction ID as `id` to the redirect URL
-    const transactionId = searchParams.get("id");
+    const transactionId = searchParams.get("id");     // Wompi's transaction ID
+    const paymentState = searchParams.get("payment"); // Our custom trigger param
+    const urlReference = searchParams.get("reference");
 
-    if (!paymentState || !reference) return;
+    // Trigger on: Wompi transaction ID returned, OR our own payment=processing param
+    const isPaymentReturn = !!(transactionId || paymentState);
+    if (!isPaymentReturn) return;
+
+    // Recover reference from URL or, when Wompi strips our params, from storage
+    const reference = urlReference ?? sessionStorage.getItem("wompi_pending_reference");
+    if (!transactionId && !reference) return;
 
     let active = true;
 
     const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+
+    const cleanup = () => {
+      sessionStorage.removeItem("wompi_pending_reference");
+      const next = new URLSearchParams(searchParams);
+      next.delete("payment");
+      next.delete("reference");
+      next.delete("id");
+      next.delete("env");
+      setSearchParams(next, { replace: true });
+    };
 
     const verifyPayment = async () => {
       setIsCheckingPayment(true);
@@ -167,13 +189,13 @@ export default function CheckOut() {
         let status: PaymentStatus = "pending";
 
         if (transactionId) {
-          // Priority 1: authoritative verification via Wompi API
+          // Priority 1: authoritative — queries Wompi API directly
           const res = await axios.get<PaymentStatusResponse>("/payments/wompi/verify", {
-            params: { transactionId, reference },
+            params: { transactionId, reference: reference ?? "" },
           });
           status = res.data.data.status;
         } else {
-          // Priority 2: poll DB order status (webhook-dependent fallback)
+          // Priority 2: poll DB order status (depends on webhook)
           for (let attempt = 0; attempt < 6; attempt++) {
             const res = await axios.get<PaymentStatusResponse>("/payments/wompi/status", {
               params: { reference },
@@ -212,12 +234,7 @@ export default function CheckOut() {
       } finally {
         if (active) {
           setIsCheckingPayment(false);
-          // Clean up all Wompi-related URL params
-          const next = new URLSearchParams(searchParams);
-          next.delete("payment");
-          next.delete("reference");
-          next.delete("id");
-          setSearchParams(next, { replace: true });
+          cleanup();
         }
       }
     };

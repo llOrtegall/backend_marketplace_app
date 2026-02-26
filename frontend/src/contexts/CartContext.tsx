@@ -1,6 +1,15 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
-type ProductInCart = {
+export type ProductInCart = {
   id: string;
   name: string;
   price: string;
@@ -19,221 +28,172 @@ type CartContextValue = {
   items: CartItem[];
   total: number;
   itemsCount: number;
-  isCartLoading: boolean;
   isInCart: (productId: string) => boolean;
-  addToCart: (product: ProductInCart) => Promise<boolean>;
-  incrementItemQuantity: (productId: string) => Promise<boolean>;
-  decrementItemQuantity: (productId: string) => Promise<boolean>;
-  removeFromCart: (productId: string) => Promise<boolean>;
+  addToCart: (product: ProductInCart) => boolean;
+  incrementItemQuantity: (productId: string) => boolean;
+  decrementItemQuantity: (productId: string) => void;
+  removeFromCart: (productId: string) => void;
   clearCart: () => void;
-  refreshCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | undefined>(undefined);
+
 const CART_STORAGE_KEY = "react_marketplace_cart_v1";
 
-const toCartItems = (items: Array<{ quantity: number; product: ProductInCart }>): CartItem[] =>
-  items.map((item) => ({
-    ...item,
-    id: item.product.id,
-    subtotal: Number((Number(item.product.price) * item.quantity).toFixed(2)),
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const round2 = (n: number) => Number(n.toFixed(2));
+
+/**
+ * Persist to localStorage, stripping imageUrl so stale signed URLs
+ * don't get reloaded on the next session. imageUrl is restored at
+ * runtime (CheckOut refreshes them from /products on mount).
+ */
+const persist = (items: CartItem[]) => {
+  if (typeof window === "undefined") return;
+  const payload = items.map(({ quantity, product }) => ({
+    quantity,
+    product: { id: product.id, name: product.name, price: product.price, stock: product.stock, imageUrl: "" },
   }));
+  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
+};
 
-const readStoredCart = (): CartItem[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
+const readStored = (): CartItem[] => {
+  if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(CART_STORAGE_KEY);
-  if (!raw) {
-    return [];
-  }
-
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Array<{ quantity: number; product: ProductInCart }>;
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return toCartItems(parsed).filter((item) => item.quantity > 0);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((item) => item.quantity > 0 && item.product?.id)
+      .map((item) => ({
+        id: item.product.id,
+        quantity: item.quantity,
+        product: item.product,
+        subtotal: round2(Number(item.product.price) * item.quantity),
+      }));
   } catch {
     return [];
   }
 };
 
-const writeStoredCart = (items: CartItem[]) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const payload = items.map((item) => ({
-    quantity: item.quantity,
-    product: item.product,
-  }));
-
-  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
-};
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => readStoredCart());
-  const [isCartLoading, setIsCartLoading] = useState(false);
+  const [items, setItems] = useState<CartItem[]>(() => readStored());
 
-  const refreshCart = useCallback(() => {
-    setIsCartLoading(true);
-    const storedItems = readStoredCart();
-    setItems(storedItems);
-    setIsCartLoading(false);
+  /**
+   * itemsRef always holds the latest items synchronously.
+   * Cart operations read from it to avoid stale closures without
+   * needing to add `items` to every useCallback dependency array.
+   */
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  const commit = useCallback((next: CartItem[]) => {
+    setItems(next);
+    persist(next);
   }, []);
 
-  const addToCart = useCallback(async (product: ProductInCart) => {
-    let added = true;
+  // ── Mutations ────────────────────────────────────────────────────────────
 
-    setItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id);
+  /** Returns false if the product is already at max stock. */
+  const addToCart = useCallback(
+    (product: ProductInCart): boolean => {
+      const current = itemsRef.current;
+      const existing = current.find((i) => i.product.id === product.id);
 
-      if (!existing) {
-        const next = [
-          ...prev,
-          {
-            id: product.id,
-            quantity: 1,
-            product,
-            subtotal: Number(product.price),
-          },
-        ];
-        writeStoredCart(next);
-        return next;
+      if (existing) {
+        if (existing.quantity >= product.stock) return false;
+        const next = current.map((i) => {
+          if (i.product.id !== product.id) return i;
+          const quantity = i.quantity + 1;
+          return { ...i, quantity, subtotal: round2(Number(i.product.price) * quantity) };
+        });
+        commit(next);
+        return true;
       }
 
-      if (existing.quantity >= product.stock) {
-        added = false;
-        return prev;
-      }
+      const next: CartItem[] = [
+        ...current,
+        { id: product.id, quantity: 1, product, subtotal: round2(Number(product.price)) },
+      ];
+      commit(next);
+      return true;
+    },
+    [commit],
+  );
 
-      const next = prev.map((item) => {
-        if (item.product.id !== product.id) return item;
+  /** Returns false if the product is already at max stock. */
+  const incrementItemQuantity = useCallback(
+    (productId: string): boolean => {
+      const current = itemsRef.current;
+      const existing = current.find((i) => i.product.id === productId);
+      if (!existing || existing.quantity >= existing.product.stock) return false;
 
-        const quantity = item.quantity + 1;
-        return {
-          ...item,
-          quantity,
-          subtotal: Number((Number(item.product.price) * quantity).toFixed(2)),
-        };
+      const next = current.map((i) => {
+        if (i.product.id !== productId) return i;
+        const quantity = i.quantity + 1;
+        return { ...i, quantity, subtotal: round2(Number(i.product.price) * quantity) };
       });
+      commit(next);
+      return true;
+    },
+    [commit],
+  );
 
-      writeStoredCart(next);
-      return next;
-    });
+  /** Decrements quantity; removes item if quantity reaches 0. */
+  const decrementItemQuantity = useCallback(
+    (productId: string): void => {
+      const current = itemsRef.current;
+      const existing = current.find((i) => i.product.id === productId);
+      if (!existing) return;
 
-    return added;
-  }, []);
+      const next =
+        existing.quantity <= 1
+          ? current.filter((i) => i.product.id !== productId)
+          : current.map((i) => {
+              if (i.product.id !== productId) return i;
+              const quantity = i.quantity - 1;
+              return { ...i, quantity, subtotal: round2(Number(i.product.price) * quantity) };
+            });
+      commit(next);
+    },
+    [commit],
+  );
 
-  const incrementItemQuantity = useCallback(async (productId: string) => {
-    let increased = false;
-
-    setItems((prev) => {
-      const existing = prev.find((item) => item.product.id === productId);
-      if (!existing) {
-        return prev;
-      }
-
-      if (existing.quantity >= existing.product.stock) {
-        return prev;
-      }
-
-      increased = true;
-
-      const next = prev.map((item) => {
-        if (item.product.id !== productId) return item;
-
-        const quantity = item.quantity + 1;
-        return {
-          ...item,
-          quantity,
-          subtotal: Number((Number(item.product.price) * quantity).toFixed(2)),
-        };
-      });
-
-      writeStoredCart(next);
-      return next;
-    });
-
-    return increased;
-  }, []);
-
-  const decrementItemQuantity = useCallback(async (productId: string) => {
-    let decreased = false;
-
-    setItems((prev) => {
-      const existing = prev.find((item) => item.product.id === productId);
-      if (!existing) {
-        return prev;
-      }
-
-      decreased = true;
-
-      if (existing.quantity <= 1) {
-        const next = prev.filter((item) => item.product.id !== productId);
-        writeStoredCart(next);
-        return next;
-      }
-
-      const next = prev.map((item) => {
-        if (item.product.id !== productId) return item;
-
-        const quantity = item.quantity - 1;
-        return {
-          ...item,
-          quantity,
-          subtotal: Number((Number(item.product.price) * quantity).toFixed(2)),
-        };
-      });
-
-      writeStoredCart(next);
-      return next;
-    });
-
-    return decreased;
-  }, []);
-
-  const removeFromCart = useCallback(async (productId: string) => {
-    let removed = false;
-
-    setItems((prev) => {
-      const existing = prev.some((item) => item.product.id === productId);
-      if (!existing) {
-        return prev;
-      }
-
-      removed = true;
-      const next = prev.filter((item) => item.product.id !== productId);
-      writeStoredCart(next);
-      return next;
-    });
-
-    return removed;
-  }, []);
+  const removeFromCart = useCallback(
+    (productId: string): void => {
+      const next = itemsRef.current.filter((i) => i.product.id !== productId);
+      commit(next);
+    },
+    [commit],
+  );
 
   const clearCart = useCallback(() => {
     setItems([]);
-
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(CART_STORAGE_KEY);
     }
   }, []);
 
+  // ── Derived ──────────────────────────────────────────────────────────────
+
   const isInCart = useCallback(
-    (productId: string) => items.some((item) => item.product.id === productId),
+    (productId: string) => items.some((i) => i.product.id === productId),
     [items],
   );
 
   const total = useMemo(
-    () => Number(items.reduce((acc, item) => acc + item.subtotal, 0).toFixed(2)),
+    () => round2(items.reduce((acc, i) => acc + i.subtotal, 0)),
     [items],
   );
 
   const itemsCount = useMemo(
-    () => items.reduce((acc, item) => acc + item.quantity, 0),
+    () => items.reduce((acc, i) => acc + i.quantity, 0),
     [items],
   );
 
@@ -242,42 +202,32 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items,
       total,
       itemsCount,
-      isCartLoading,
       isInCart,
       addToCart,
       incrementItemQuantity,
       decrementItemQuantity,
       removeFromCart,
       clearCart,
-      refreshCart,
     }),
     [
       items,
       total,
       itemsCount,
-      isCartLoading,
       isInCart,
       addToCart,
       incrementItemQuantity,
       decrementItemQuantity,
       removeFromCart,
       clearCart,
-      refreshCart,
     ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-// ...existing code...
-
 // eslint-disable-next-line react-refresh/only-export-components
 export function useCart() {
   const context = useContext(CartContext);
-
-  if (!context) {
-    throw new Error("useCart must be used within CartProvider");
-  }
-
+  if (!context) throw new Error("useCart must be used within CartProvider");
   return context;
 }

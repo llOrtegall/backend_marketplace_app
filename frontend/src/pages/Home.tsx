@@ -16,7 +16,7 @@ type Product = {
 };
 
 export default function Home() {
-  const { addToCart, removeFromCart, isInCart, isCartLoading } = useCart();
+  const { addToCart, removeFromCart, isInCart } = useCart();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -63,8 +63,8 @@ export default function Home() {
 
   const hasProducts = useMemo(() => products.length > 0, [products.length]);
 
-  const handleAddToCart = async (product: Product) => {
-    const success = await addToCart({
+  const handleAddToCart = (product: Product) => {
+    const added = addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
@@ -72,23 +72,16 @@ export default function Home() {
       stock: product.stock,
     });
 
-    if (success) {
+    if (added) {
       toast.success("Producto agregado al carrito", { position: "bottom-center" });
-      return;
+    } else {
+      toast.error("No hay más stock disponible para este producto", { position: "bottom-center" });
     }
-
-    toast.error("No hay más stock disponible para este producto", { position: "bottom-center" });
   };
 
-  const handleRemoveFromCart = async (productId: string) => {
-    const success = await removeFromCart(productId);
-
-    if (success) {
-      toast.success("Producto removido del carrito", { position: "bottom-center" });
-      return;
-    }
-
-    toast.error("No se pudo remover el producto del carrito", { position: "bottom-center" });
+  const handleRemoveFromCart = (productId: string) => {
+    removeFromCart(productId);
+    toast.success("Producto removido del carrito", { position: "bottom-center" });
   };
 
   return (
@@ -132,7 +125,6 @@ export default function Home() {
               key={product.id}
               product={product}
               isInCart={isInCart(product.id)}
-              isCartLoading={isCartLoading}
               onAddToCart={handleAddToCart}
               onRemoveFromCart={handleRemoveFromCart}
             />

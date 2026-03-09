@@ -5,6 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch ./index.ts",
+    "test": "bun test --env-file .env.test",
+    "test:watch": "bun test --watch --env-file .env.test",
+    "test:coverage": "bun test --coverage --env-file .env.test",
     "format": "bunx --bun @biomejs/biome format --write",
     "lint": "bunx --bun @biomejs/biome lint --write"
   },
@@ -12,6 +15,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.3.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -20,6 +24,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.97",
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.5.0",
     "lint-staged": "^15.5.2",
@@ -30,9 +35,13 @@
     "typescript": "^5"
   },
   "simple-git-hooks": {
-    "pre-commit": "export PATH=$HOME/.bun/bin:$PATH && bunx lint-staged"
+    "pre-commit": "export PATH=$HOME/.bun/bin:$PATH && bunx lint-staged && bun test --env-file .env.test",
+    "pre-push": "export PATH=$HOME/.bun/bin:$PATH && bun test --env-file .env.test"
   },
   "lint-staged": {
-    "*.{ts,tsx,js}": ["bunx --bun @biomejs/biome format --write", "bunx --bun @biomejs/biome lint --write"]
+    "*.{ts,tsx,js}": [
+      "bunx --bun @biomejs/biome format --write",
+      "bunx --bun @biomejs/biome lint --write"
+    ]
   }
 }

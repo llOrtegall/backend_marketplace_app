@@ -18,6 +18,10 @@ export class Price {
     }
     return new Price(value);
   }
+
+  static fromPersistence(value: number): Price {
+    return new Price(value);
+  }
 }
 
 export class Stock {
@@ -30,6 +34,10 @@ export class Stock {
         'Stock must be a non-negative integer',
       );
     }
+    return new Stock(value);
+  }
+
+  static fromPersistence(value: number): Stock {
     return new Stock(value);
   }
 }

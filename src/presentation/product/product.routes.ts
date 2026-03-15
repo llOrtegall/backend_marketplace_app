@@ -1,5 +1,8 @@
 import { Router } from 'express';
-import { authenticate } from '../../shared/middleware/authenticate';
+import {
+  authenticate,
+  optionalAuthenticate,
+} from '../../shared/middleware/authenticate';
 import { validate } from '../../shared/middleware/validate';
 import {
   createProduct,
@@ -18,10 +21,11 @@ export const productRouter = Router();
 
 productRouter.get(
   '/',
+  optionalAuthenticate,
   validate(listProductsQuerySchema, 'query'),
   listProducts,
 );
-productRouter.get('/:id', getProduct);
+productRouter.get('/:id', optionalAuthenticate, getProduct);
 productRouter.post(
   '/',
   authenticate,

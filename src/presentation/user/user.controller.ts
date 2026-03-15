@@ -5,8 +5,8 @@ import {
   makePromoteToAdminUseCase,
   makeUpdateUserStatusUseCase,
 } from '../../application/user/user.factory';
-import { ForbiddenError } from '../../shared/errors/AppError';
-import type { UpdateStatusBody } from './user.schemas';
+import { requireAuth } from '../../shared/middleware/authenticate';
+import type { ListUsersQuery, UpdateStatusBody } from './user.schemas';
 import { toUserDTO } from './user.types';
 
 export async function getUser(
@@ -15,16 +15,8 @@ export async function getUser(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const requesterId = req.auth!.sub;
-    const requesterRole = req.auth!.role;
-    const targetId = req.params.id;
-
-    // Users can only see their own profile; admins/superadmin can see anyone
-    if (requesterRole === 'user' && requesterId !== targetId) {
-      return next(new ForbiddenError('FORBIDDEN', 'Access denied'));
-    }
-
-    const user = await makeGetUserUseCase().execute(targetId);
+    const { sub, role } = requireAuth(req);
+    const user = await makeGetUserUseCase().execute(req.params.id, sub, role);
     res.json({ success: true, data: toUserDTO(user) });
   } catch (err) {
     next(err);
@@ -37,7 +29,7 @@ export async function listUsers(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { page, limit, ...filters } = req.query as any;
+    const { page, limit, ...filters } = req.query as unknown as ListUsersQuery;
     const result = await makeListUsersUseCase().execute({
       filters,
       page,
@@ -64,9 +56,10 @@ export async function updateUserStatus(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: actorId } = requireAuth(req);
     const user = await makeUpdateUserStatusUseCase().execute({
       targetId: req.params.id,
-      actorId: req.auth!.sub,
+      actorId,
       status: req.body.status,
     });
     res.json({ success: true, data: toUserDTO(user) });
@@ -81,9 +74,10 @@ export async function promoteToAdmin(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: actorId } = requireAuth(req);
     const user = await makePromoteToAdminUseCase().execute({
       targetId: req.params.id,
-      actorId: req.auth!.sub,
+      actorId,
     });
     res.json({ success: true, data: toUserDTO(user) });
   } catch (err) {

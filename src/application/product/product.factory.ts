@@ -5,20 +5,17 @@ import { GetProductUseCase } from './getProduct.usecase';
 import { ListProductsUseCase } from './listProducts.usecase';
 import { UpdateProductUseCase } from './updateProduct.usecase';
 
-function makeRepo() {
-  return new MongoProductRepository();
-}
-
 export const makeCreateProductUseCase = () =>
-  new CreateProductUseCase(makeRepo());
+  new CreateProductUseCase(new MongoProductRepository());
 
-export const makeGetProductUseCase = () => new GetProductUseCase(makeRepo());
+export const makeGetProductUseCase = () =>
+  new GetProductUseCase(new MongoProductRepository());
 
 export const makeListProductsUseCase = () =>
-  new ListProductsUseCase(makeRepo());
+  new ListProductsUseCase(new MongoProductRepository());
 
 export const makeUpdateProductUseCase = () =>
-  new UpdateProductUseCase(makeRepo());
+  new UpdateProductUseCase(new MongoProductRepository());
 
 export const makeDeleteProductUseCase = () =>
-  new DeleteProductUseCase(makeRepo());
+  new DeleteProductUseCase(new MongoProductRepository());

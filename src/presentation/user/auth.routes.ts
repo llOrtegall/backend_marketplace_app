@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../../shared/middleware/authenticate';
+import { authRateLimiter } from '../../shared/middleware/rateLimiter';
 import { validate } from '../../shared/middleware/validate';
 import { login, logout, refreshToken, register } from './auth.controller';
 import {
@@ -11,7 +12,12 @@ import {
 
 export const authRouter = Router();
 
-authRouter.post('/register', validate(registerSchema), register);
-authRouter.post('/login', validate(loginSchema), login);
+authRouter.post(
+  '/register',
+  authRateLimiter,
+  validate(registerSchema),
+  register,
+);
+authRouter.post('/login', authRateLimiter, validate(loginSchema), login);
 authRouter.post('/refresh', validate(refreshTokenSchema), refreshToken);
 authRouter.post('/logout', authenticate, validate(logoutSchema), logout);

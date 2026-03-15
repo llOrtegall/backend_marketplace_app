@@ -26,6 +26,9 @@ export class RefreshTokenUseCase {
     if (!stored) {
       throw new UnauthorizedError('Refresh token not found or already used');
     }
+    if (stored.expiresAt < new Date()) {
+      throw new UnauthorizedError('Refresh token expired');
+    }
 
     const user = await this.userRepo.findById(payload.sub);
     if (!user || !user.isActive()) {

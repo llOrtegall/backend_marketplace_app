@@ -28,7 +28,7 @@ describe('ListProductsUseCase', () => {
         sellerId: 'seller-1',
       }),
       makeProduct({ id: 'active-2', category: 'hogar', sellerId: 'seller-2' }),
-      makeInactiveProduct({ id: 'inactive-1' }),
+      makeInactiveProduct({ id: 'inactive-1', sellerId: 'seller-1' }),
     ]);
     useCase = new ListProductsUseCase(repo);
   });
@@ -75,13 +75,35 @@ describe('ListProductsUseCase', () => {
     expect(result.totalPages).toBe(2);
   });
 
-  it('el caller puede sobreescribir el status por defecto pasando un status explícito', async () => {
-    // Comportamiento documentado: { status: "active", ...filters } → filters.status lo sobreescribe
+  it('usuario anónimo no puede ver productos inactivos: se fuerza a active', async () => {
     const result = await useCase.execute({
       filters: { status: 'inactive' },
       pagination: defaultPagination,
     });
 
+    expect(result.items.every((p) => p.status === 'active')).toBe(true);
+  });
+
+  it('admin puede ver todos los productos inactivos', async () => {
+    const result = await useCase.execute({
+      filters: { status: 'inactive' },
+      pagination: defaultPagination,
+      requesterRole: 'admin',
+    });
+
     expect(result.items.every((p) => p.status === 'inactive')).toBe(true);
+    expect(result.items).toHaveLength(1);
+  });
+
+  it('seller autenticado solo ve sus propios productos inactivos', async () => {
+    const result = await useCase.execute({
+      filters: { status: 'inactive' },
+      pagination: defaultPagination,
+      requesterId: 'seller-1',
+      requesterRole: 'user',
+    });
+
+    expect(result.items.every((p) => p.status === 'inactive')).toBe(true);
+    expect(result.items.every((p) => p.sellerId === 'seller-1')).toBe(true);
   });
 });

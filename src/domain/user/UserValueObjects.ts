@@ -1,7 +1,4 @@
-import {
-  UnprocessableError,
-  ValidationError,
-} from '../../shared/errors/AppError';
+import { ValidationError } from '../../shared/errors/AppError';
 
 export class Email {
   private constructor(readonly value: string) {}
@@ -13,6 +10,10 @@ export class Email {
       throw new ValidationError('Invalid email format');
     }
     return new Email(normalized);
+  }
+
+  static fromPersistence(value: string): Email {
+    return new Email(value);
   }
 }
 

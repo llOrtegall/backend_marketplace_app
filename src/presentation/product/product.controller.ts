@@ -6,7 +6,12 @@ import {
   makeListProductsUseCase,
   makeUpdateProductUseCase,
 } from '../../application/product/product.factory';
-import type { CreateProductBody, UpdateProductBody } from './product.schemas';
+import type {
+  CreateProductBody,
+  ListProductsQuery,
+  UpdateProductBody,
+} from './product.schemas';
+import { requireAuth } from '../../shared/middleware/authenticate';
 import { toProductDTO } from './product.types';
 
 export async function createProduct(
@@ -15,7 +20,7 @@ export async function createProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const sellerId = req.auth!.sub;
+    const { sub: sellerId } = requireAuth(req);
     const product = await makeCreateProductUseCase().execute({
       ...req.body,
       sellerId,
@@ -32,7 +37,10 @@ export async function getProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const product = await makeGetProductUseCase().execute(req.params.id);
+    const product = await makeGetProductUseCase().execute(req.params.id, {
+      requesterId: req.auth?.sub,
+      requesterRole: req.auth?.role,
+    });
     res.json({ success: true, data: toProductDTO(product) });
   } catch (err) {
     next(err);
@@ -45,10 +53,13 @@ export async function listProducts(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { page, limit, sortBy, order, ...filters } = req.query as any;
+    const { page, limit, sortBy, order, cursor, ...filters } =
+      req.query as unknown as ListProductsQuery;
     const result = await makeListProductsUseCase().execute({
       filters,
-      pagination: { page, limit, sortBy, order },
+      pagination: { page, limit, sortBy, order, cursor },
+      requesterId: req.auth?.sub,
+      requesterRole: req.auth?.role,
     });
     res.json({
       success: true,
@@ -58,6 +69,9 @@ export async function listProducts(
         limit: result.limit,
         total: result.total,
         totalPages: result.totalPages,
+        ...(result.nextCursor !== undefined && {
+          nextCursor: result.nextCursor,
+        }),
       },
     });
   } catch (err) {
@@ -71,9 +85,11 @@ export async function updateProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: requesterId, role: requesterRole } = requireAuth(req);
     const product = await makeUpdateProductUseCase().execute({
       productId: req.params.id,
-      requesterId: req.auth!.sub,
+      requesterId,
+      requesterRole,
       ...req.body,
     });
     res.json({ success: true, data: toProductDTO(product) });
@@ -88,9 +104,11 @@ export async function deleteProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: requesterId, role: requesterRole } = requireAuth(req);
     await makeDeleteProductUseCase().execute({
       productId: req.params.id,
-      requesterId: req.auth!.sub,
+      requesterId,
+      requesterRole,
     });
     res.status(204).send();
   } catch (err) {

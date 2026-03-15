@@ -1,3 +1,5 @@
+import type { ClientSession } from 'mongoose';
+import { AppError } from '../../shared/errors/AppError';
 import { Product } from '../../domain/product/Product';
 import type {
   PaginatedResult,
@@ -8,9 +10,26 @@ import type {
 import { Price, Stock } from '../../domain/product/ProductValueObjects';
 import { ProductModel, type ProductDocument } from './ProductSchema';
 
+function encodeCursor(createdAt: Date, id: string): string {
+  return Buffer.from(
+    JSON.stringify({ c: createdAt.toISOString(), i: id }),
+  ).toString('base64');
+}
+
+function decodeCursor(cursor: string): { createdAt: Date; id: string } {
+  try {
+    const { c, i } = JSON.parse(Buffer.from(cursor, 'base64').toString());
+    return { createdAt: new Date(c), id: i };
+  } catch {
+    throw new AppError('INVALID_CURSOR', 'Invalid pagination cursor', 400);
+  }
+}
+
 export class MongoProductRepository implements ProductRepository {
-  async findById(id: string): Promise<Product | null> {
-    const doc = await ProductModel.findById(id).lean();
+  async findById(id: string, session?: ClientSession): Promise<Product | null> {
+    const doc = await ProductModel.findById(id)
+      .session(session ?? null)
+      .lean();
     if (!doc) return null;
     return this.toDomain(doc);
   }
@@ -19,38 +38,67 @@ export class MongoProductRepository implements ProductRepository {
     filters: ProductFilters,
     pagination: PaginationOptions,
   ): Promise<PaginatedResult<Product>> {
-    const query: Record<string, unknown> = {};
+    const filterQuery: Record<string, unknown> = {};
 
-    if (filters.status) query.status = filters.status;
-    if (filters.category) query.category = filters.category;
-    if (filters.sellerId) query.sellerId = filters.sellerId;
+    if (filters.status) filterQuery.status = filters.status;
+    if (filters.category) filterQuery.category = filters.category;
+    if (filters.sellerId) filterQuery.sellerId = filters.sellerId;
     if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
-      query.price = {
+      filterQuery.price = {
         ...(filters.minPrice !== undefined && { $gte: filters.minPrice }),
         ...(filters.maxPrice !== undefined && { $lte: filters.maxPrice }),
       };
     }
 
-    const skip = (pagination.page - 1) * pagination.limit;
+    const rawCursor = pagination.cursor;
+    const useCursor = !!rawCursor && pagination.sortBy === 'createdAt';
+    const findQuery: Record<string, unknown> = { ...filterQuery };
+    let skip = 0;
+
+    if (useCursor && rawCursor) {
+      const { createdAt, id } = decodeCursor(rawCursor);
+      const op = pagination.order === 'desc' ? '$lt' : '$gt';
+      findQuery.$and = [
+        {
+          $or: [
+            { createdAt: { [op]: createdAt } },
+            { createdAt, _id: { [op]: id } },
+          ],
+        },
+      ];
+    } else {
+      skip = (pagination.page - 1) * pagination.limit;
+    }
+
     const sort = {
       [pagination.sortBy]: pagination.order === 'asc' ? 1 : -1,
+      _id: pagination.order === 'asc' ? 1 : -1,
     } as Record<string, 1 | -1>;
 
     const [docs, total] = await Promise.all([
-      ProductModel.find(query)
+      ProductModel.find(findQuery)
         .sort(sort)
         .skip(skip)
         .limit(pagination.limit)
         .lean(),
-      ProductModel.countDocuments(query),
+      ProductModel.countDocuments(filterQuery),
     ]);
 
+    const items = docs.map((d) => this.toDomain(d));
+
+    let nextCursor: string | undefined;
+    if (useCursor && docs.length === pagination.limit) {
+      const last = docs.at(-1);
+      if (last) nextCursor = encodeCursor(last.createdAt, last._id);
+    }
+
     return {
-      items: docs.map((d) => this.toDomain(d)),
+      items,
       total,
-      page: pagination.page,
+      page: useCursor ? 1 : pagination.page,
       limit: pagination.limit,
       totalPages: Math.ceil(total / pagination.limit),
+      nextCursor,
     };
   }
 
@@ -58,10 +106,11 @@ export class MongoProductRepository implements ProductRepository {
     await ProductModel.create(this.toPersistence(product));
   }
 
-  async update(product: Product): Promise<void> {
+  async update(product: Product, session?: ClientSession): Promise<void> {
     await ProductModel.findByIdAndUpdate(
       product.id,
       this.toPersistence(product),
+      { session: session ?? null },
     );
   }
 
@@ -70,8 +119,8 @@ export class MongoProductRepository implements ProductRepository {
       id: doc._id,
       name: doc.name,
       description: doc.description,
-      price: Price.create(doc.price),
-      stock: Stock.create(doc.stock),
+      price: Price.fromPersistence(doc.price),
+      stock: Stock.fromPersistence(doc.stock),
       category: doc.category,
       images: doc.images,
       sellerId: doc.sellerId,

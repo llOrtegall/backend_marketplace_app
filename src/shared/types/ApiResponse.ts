@@ -1,3 +1,12 @@
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  nextCursor?: string;
+}
+
 export type SuccessResponse<T> = {
   success: true;
   data: T;

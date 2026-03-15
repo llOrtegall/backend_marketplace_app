@@ -9,32 +9,32 @@ import { RefreshTokenUseCase } from './refreshToken.usecase';
 import { RegisterUserUseCase } from './registerUser.usecase';
 import { UpdateUserStatusUseCase } from './updateUserStatus.usecase';
 
-function makeUserRepo() {
-  return new MongoUserRepository();
-}
-
-function makeTokenRepo() {
-  return new MongoRefreshTokenRepository();
-}
-
 export const makeRegisterUserUseCase = () =>
-  new RegisterUserUseCase(makeUserRepo());
+  new RegisterUserUseCase(new MongoUserRepository());
 
 export const makeLoginUserUseCase = () =>
-  new LoginUserUseCase(makeUserRepo(), makeTokenRepo());
+  new LoginUserUseCase(
+    new MongoUserRepository(),
+    new MongoRefreshTokenRepository(),
+  );
 
 export const makeRefreshTokenUseCase = () =>
-  new RefreshTokenUseCase(makeUserRepo(), makeTokenRepo());
+  new RefreshTokenUseCase(
+    new MongoUserRepository(),
+    new MongoRefreshTokenRepository(),
+  );
 
 export const makeLogoutUserUseCase = () =>
-  new LogoutUserUseCase(makeTokenRepo());
+  new LogoutUserUseCase(new MongoRefreshTokenRepository());
 
-export const makeGetUserUseCase = () => new GetUserUseCase(makeUserRepo());
+export const makeGetUserUseCase = () =>
+  new GetUserUseCase(new MongoUserRepository());
 
-export const makeListUsersUseCase = () => new ListUsersUseCase(makeUserRepo());
+export const makeListUsersUseCase = () =>
+  new ListUsersUseCase(new MongoUserRepository());
 
 export const makeUpdateUserStatusUseCase = () =>
-  new UpdateUserStatusUseCase(makeUserRepo());
+  new UpdateUserStatusUseCase(new MongoUserRepository());
 
 export const makePromoteToAdminUseCase = () =>
-  new PromoteToAdminUseCase(makeUserRepo());
+  new PromoteToAdminUseCase(new MongoUserRepository());

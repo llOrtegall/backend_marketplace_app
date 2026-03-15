@@ -1,3 +1,11 @@
+import type { Order } from '../../domain/order/Order';
+import type {
+  IOrderRepository,
+  OrderFilters,
+  OrderPaginationOptions,
+} from '../../domain/order/OrderRepository';
+import type { Payment } from '../../domain/payment/Payment';
+import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { Product } from '../../domain/product/Product';
 import type {
   PaginatedResult,
@@ -159,6 +167,96 @@ export function createMockProductRepository(
     async update(product) {
       store.set(product.id, product);
       updatedProducts.push(product);
+    },
+  };
+}
+
+// ─── Order Repository ─────────────────────────────────────────────────────────
+
+export interface MockOrderRepository extends IOrderRepository {
+  _store: Map<string, Order>;
+  savedOrders: Order[];
+  updatedOrders: Order[];
+}
+
+export function createMockOrderRepository(
+  seed: Order[] = [],
+): MockOrderRepository {
+  const store = new Map(seed.map((o) => [o.id, o]));
+  const savedOrders: Order[] = [];
+  const updatedOrders: Order[] = [];
+
+  return {
+    _store: store,
+    savedOrders,
+    updatedOrders,
+
+    async findById(id) {
+      return store.get(id) ?? null;
+    },
+    async findAll(
+      filters: OrderFilters,
+      pagination: OrderPaginationOptions,
+    ): Promise<PaginatedResult<Order>> {
+      let items = [...store.values()];
+      if (filters.buyerId)
+        items = items.filter((o) => o.buyerId === filters.buyerId);
+      if (filters.status)
+        items = items.filter((o) => o.status === filters.status);
+      const start = (pagination.page - 1) * pagination.limit;
+      const paginated = items.slice(start, start + pagination.limit);
+      return {
+        items: paginated,
+        total: items.length,
+        page: pagination.page,
+        limit: pagination.limit,
+        totalPages: Math.ceil(items.length / pagination.limit),
+      };
+    },
+    async save(order) {
+      store.set(order.id, order);
+      savedOrders.push(order);
+    },
+    async update(order) {
+      store.set(order.id, order);
+      updatedOrders.push(order);
+    },
+  };
+}
+
+// ─── Payment Repository ───────────────────────────────────────────────────────
+
+export interface MockPaymentRepository extends IPaymentRepository {
+  _store: Map<string, Payment>;
+  savedPayments: Payment[];
+  updatedPayments: Payment[];
+}
+
+export function createMockPaymentRepository(
+  seed: Payment[] = [],
+): MockPaymentRepository {
+  const store = new Map(seed.map((p) => [p.id, p]));
+  const savedPayments: Payment[] = [];
+  const updatedPayments: Payment[] = [];
+
+  return {
+    _store: store,
+    savedPayments,
+    updatedPayments,
+
+    async findById(id) {
+      return store.get(id) ?? null;
+    },
+    async findByOrderId(orderId) {
+      return [...store.values()].find((p) => p.orderId === orderId) ?? null;
+    },
+    async save(payment) {
+      store.set(payment.id, payment);
+      savedPayments.push(payment);
+    },
+    async update(payment) {
+      store.set(payment.id, payment);
+      updatedPayments.push(payment);
     },
   };
 }

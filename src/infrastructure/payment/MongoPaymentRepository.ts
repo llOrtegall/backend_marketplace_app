@@ -18,8 +18,10 @@ export class MongoPaymentRepository implements IPaymentRepository {
     return this.toDomain(doc);
   }
 
-  async save(payment: Payment): Promise<void> {
-    await PaymentModel.create(this.toPersistence(payment));
+  async save(payment: Payment, session?: ClientSession): Promise<void> {
+    await PaymentModel.create([this.toPersistence(payment)], {
+      session: session ?? null,
+    });
   }
 
   async update(payment: Payment, session?: ClientSession): Promise<void> {

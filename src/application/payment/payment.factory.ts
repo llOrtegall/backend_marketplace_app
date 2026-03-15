@@ -14,6 +14,7 @@ export const makeInitiatePaymentUseCase = () =>
     new MongoPaymentRepository(),
     new WompiGateway(),
     new MongoUserRepository(),
+    new MongoTransactionManager(),
   );
 
 export const makeHandleWompiEventUseCase = () =>

@@ -3,6 +3,8 @@ import express from 'express';
 import helmet from 'helmet';
 import logs from 'morgan';
 import { env } from './config/env';
+import { orderRouter } from './presentation/order/order.routes';
+import { paymentRouter } from './presentation/payment/payment.routes';
 import { productRouter } from './presentation/product/product.routes';
 import { authRouter } from './presentation/user/auth.routes';
 import { userRouter } from './presentation/user/user.routes';
@@ -32,6 +34,8 @@ export function createApp() {
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/users', userRouter);
   app.use('/api/v1/products', productRouter);
+  app.use('/api/v1/orders', orderRouter);
+  app.use('/api/v1/payments', paymentRouter);
 
   app.use(errorHandler);
 

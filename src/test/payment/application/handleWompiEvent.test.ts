@@ -4,10 +4,10 @@ import type { ITransactionManager } from '../../../application/shared/ITransacti
 import type { WompiTransactionData } from '../../../domain/payment/PaymentGateway';
 import type { Product } from '../../../domain/product/Product';
 import type {
+  IProductRepository,
   PaginatedResult,
   PaginationOptions,
   ProductFilters,
-  ProductRepository,
 } from '../../../domain/product/ProductRepository';
 import { NotFoundError } from '../../../shared/errors/AppError';
 import {
@@ -16,7 +16,7 @@ import {
   type MockOrderRepository,
   type MockPaymentRepository,
 } from '../../helpers/mockRepositories';
-import { makeOrder, makeOrderWithStatus } from '../../helpers/orderFixtures';
+import { makeOrderWithStatus } from '../../helpers/orderFixtures';
 import {
   makeApprovedPayment,
   makeDeclinedPayment,
@@ -30,14 +30,14 @@ import { Stock } from '../../../domain/product/ProductValueObjects';
 function createMockTransactionManager(): ITransactionManager {
   return {
     async runInTransaction(fn) {
-      return fn(null as any);
+      return fn(null as unknown);
     },
   };
 }
 
 // ─── Mock de ProductRepository (extendido con update y tracking) ──────────────
 
-interface MockProductRepo extends ProductRepository {
+interface MockProductRepo extends IProductRepository {
   _store: Map<string, Product>;
   updatedProducts: Product[];
 }

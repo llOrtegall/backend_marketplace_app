@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { CreateOrderUseCase } from '../../../application/order/createOrder.usecase';
-import {
-  NotFoundError,
-  UnprocessableError,
-} from '../../../shared/errors/AppError';
+import { NotFoundError } from '../../../shared/errors/AppError';
 import {
   createMockOrderRepository,
   createMockProductRepository,

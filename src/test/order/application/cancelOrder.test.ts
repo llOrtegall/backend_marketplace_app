@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
 import { CancelOrderUseCase } from '../../../application/order/cancelOrder.usecase';
-import { ForbiddenError, NotFoundError } from '../../../shared/errors/AppError';
+import { NotFoundError } from '../../../shared/errors/AppError';
 import {
   createMockOrderRepository,
   type MockOrderRepository,
@@ -59,7 +59,7 @@ describe('CancelOrderUseCase', () => {
     });
 
     expect(repo.updatedOrders).toHaveLength(1);
-    expect(repo.updatedOrders[0].status).toBe('CANCELLED');
+    expect(repo.updatedOrders.at(0)?.status).toBe('CANCELLED');
   });
 
   it('lanza NotFoundError ORDER_NOT_FOUND si la orden no existe', async () => {

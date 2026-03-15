@@ -1,4 +1,4 @@
-import mongoose, { type ClientSession } from 'mongoose';
+import mongoose from 'mongoose';
 import type { DbSession } from '../../domain/shared/DbSession';
 import type { ITransactionManager } from '../../application/shared/ITransactionManager';
 

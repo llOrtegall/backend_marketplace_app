@@ -295,22 +295,22 @@ describe('TERMINAL_PAYMENT_STATUSES', () => {
 
 describe('WOMPI_TO_DOMAIN_STATUS', () => {
   it('mapea PENDING de Wompi a PENDING de dominio', () => {
-    expect(WOMPI_TO_DOMAIN_STATUS['PENDING']).toBe('PENDING');
+    expect(WOMPI_TO_DOMAIN_STATUS.PENDING).toBe('PENDING');
   });
 
   it('mapea APPROVED de Wompi a APPROVED de dominio', () => {
-    expect(WOMPI_TO_DOMAIN_STATUS['APPROVED']).toBe('APPROVED');
+    expect(WOMPI_TO_DOMAIN_STATUS.APPROVED).toBe('APPROVED');
   });
 
   it('mapea DECLINED de Wompi a DECLINED de dominio', () => {
-    expect(WOMPI_TO_DOMAIN_STATUS['DECLINED']).toBe('DECLINED');
+    expect(WOMPI_TO_DOMAIN_STATUS.DECLINED).toBe('DECLINED');
   });
 
   it('mapea VOIDED de Wompi a VOIDED de dominio', () => {
-    expect(WOMPI_TO_DOMAIN_STATUS['VOIDED']).toBe('VOIDED');
+    expect(WOMPI_TO_DOMAIN_STATUS.VOIDED).toBe('VOIDED');
   });
 
   it('mapea ERROR de Wompi a ERROR de dominio', () => {
-    expect(WOMPI_TO_DOMAIN_STATUS['ERROR']).toBe('ERROR');
+    expect(WOMPI_TO_DOMAIN_STATUS.ERROR).toBe('ERROR');
   });
 });

@@ -8,10 +8,10 @@ import type { Payment } from '../../domain/payment/Payment';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { Product } from '../../domain/product/Product';
 import type {
+  IProductRepository,
   PaginatedResult,
   PaginationOptions,
   ProductFilters,
-  ProductRepository,
 } from '../../domain/product/ProductRepository';
 import type {
   RefreshTokenData,
@@ -19,14 +19,14 @@ import type {
 } from '../../domain/user/RefreshTokenRepository';
 import type { User } from '../../domain/user/User';
 import type {
+  IUserRepository,
   UserFilters,
   UserPagination,
-  UserRepository,
 } from '../../domain/user/UserRepository';
 
 // ─── User Repository ──────────────────────────────────────────────────────────
 
-export interface MockUserRepository extends UserRepository {
+export interface MockUserRepository extends IUserRepository {
   _store: Map<string, User>;
   savedUsers: User[];
   updatedUsers: User[];
@@ -110,7 +110,7 @@ export function createMockRefreshTokenRepository(): MockRefreshTokenRepository {
 
 // ─── Product Repository ───────────────────────────────────────────────────────
 
-export interface MockProductRepository extends ProductRepository {
+export interface MockProductRepository extends IProductRepository {
   _store: Map<string, Product>;
   savedProducts: Product[];
   updatedProducts: Product[];

@@ -76,7 +76,7 @@ describe('ListOrdersUseCase', () => {
     });
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].status).toBe('CONFIRMED');
+    expect(result.items.at(0)?.status).toBe('CONFIRMED');
   });
 
   it('un user puede filtrar sus propias órdenes por status', async () => {
@@ -89,8 +89,8 @@ describe('ListOrdersUseCase', () => {
     });
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0].status).toBe('PENDING');
-    expect(result.items[0].buyerId).toBe('buyer-1');
+    expect(result.items.at(0)?.status).toBe('PENDING');
+    expect(result.items.at(0)?.buyerId).toBe('buyer-1');
   });
 
   it('retorna PaginatedResult con campos correctos', async () => {

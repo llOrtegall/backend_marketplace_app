@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import { AppError } from '../../shared/errors/AppError';
 import { Product } from '../../domain/product/Product';
 import type {
@@ -25,8 +26,10 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } {
 }
 
 export class MongoProductRepository implements ProductRepository {
-  async findById(id: string): Promise<Product | null> {
-    const doc = await ProductModel.findById(id).lean();
+  async findById(id: string, session?: ClientSession): Promise<Product | null> {
+    const doc = await ProductModel.findById(id)
+      .session(session ?? null)
+      .lean();
     if (!doc) return null;
     return this.toDomain(doc);
   }
@@ -47,12 +50,13 @@ export class MongoProductRepository implements ProductRepository {
       };
     }
 
-    const useCursor = !!pagination.cursor && pagination.sortBy === 'createdAt';
+    const rawCursor = pagination.cursor;
+    const useCursor = !!rawCursor && pagination.sortBy === 'createdAt';
     const findQuery: Record<string, unknown> = { ...filterQuery };
     let skip = 0;
 
-    if (useCursor) {
-      const { createdAt, id } = decodeCursor(pagination.cursor!);
+    if (useCursor && rawCursor) {
+      const { createdAt, id } = decodeCursor(rawCursor);
       const op = pagination.order === 'desc' ? '$lt' : '$gt';
       findQuery.$and = [
         {
@@ -84,8 +88,8 @@ export class MongoProductRepository implements ProductRepository {
 
     let nextCursor: string | undefined;
     if (useCursor && docs.length === pagination.limit) {
-      const last = docs[docs.length - 1]!;
-      nextCursor = encodeCursor(last.createdAt, last._id);
+      const last = docs.at(-1);
+      if (last) nextCursor = encodeCursor(last.createdAt, last._id);
     }
 
     return {
@@ -102,10 +106,11 @@ export class MongoProductRepository implements ProductRepository {
     await ProductModel.create(this.toPersistence(product));
   }
 
-  async update(product: Product): Promise<void> {
+  async update(product: Product, session?: ClientSession): Promise<void> {
     await ProductModel.findByIdAndUpdate(
       product.id,
       this.toPersistence(product),
+      { session: session ?? null },
     );
   }
 

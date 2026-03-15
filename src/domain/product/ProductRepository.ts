@@ -1,3 +1,4 @@
+import type { ClientSession } from 'mongoose';
 import type { PaginatedResult } from '../../shared/types/ApiResponse';
 import type { Product } from './Product';
 import type { ProductStatus } from './ProductValueObjects';
@@ -21,11 +22,11 @@ export interface PaginationOptions {
 }
 
 export interface ProductRepository {
-  findById(id: string): Promise<Product | null>;
+  findById(id: string, session?: ClientSession): Promise<Product | null>;
   findAll(
     filters: ProductFilters,
     pagination: PaginationOptions,
   ): Promise<PaginatedResult<Product>>;
   save(product: Product): Promise<void>;
-  update(product: Product): Promise<void>;
+  update(product: Product, session?: ClientSession): Promise<void>;
 }

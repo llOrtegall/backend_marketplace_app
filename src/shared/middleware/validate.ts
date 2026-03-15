@@ -12,7 +12,17 @@ export function validate(schema: ZodType, target: ValidateTarget = 'body') {
         new ValidationError('Validation failed', result.error.flatten()),
       );
     }
-    req[target] = result.data;
+    // Express 5 makes req.query a non-writable property; use defineProperty as fallback
+    try {
+      req[target] = result.data;
+    } catch {
+      Object.defineProperty(req, target, {
+        value: result.data,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    }
     next();
   };
 }

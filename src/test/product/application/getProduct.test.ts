@@ -17,7 +17,7 @@ describe('GetProductUseCase', () => {
   beforeEach(() => {
     repo = createMockProductRepository([
       makeProduct({ id: 'active-1' }),
-      makeInactiveProduct({ id: 'inactive-1' }),
+      makeInactiveProduct({ id: 'inactive-1', sellerId: 'seller-1' }),
       makeDeletedProduct({ id: 'deleted-1' }),
     ]);
     useCase = new GetProductUseCase(repo);
@@ -30,10 +30,49 @@ describe('GetProductUseCase', () => {
     expect(product.status).toBe('active');
   });
 
-  it("retorna producto inactivo (solo 'deleted' está bloqueado)", async () => {
-    const product = await useCase.execute('inactive-1');
+  it('lanza NotFoundError cuando producto inactivo se accede sin autenticación', async () => {
+    await expect(useCase.execute('inactive-1')).rejects.toMatchObject({
+      code: 'PRODUCT_NOT_FOUND',
+      statusCode: 404,
+    });
+  });
+
+  it('retorna producto inactivo para su propio seller', async () => {
+    const product = await useCase.execute('inactive-1', {
+      requesterId: 'seller-1',
+      requesterRole: 'user',
+    });
 
     expect(product.status).toBe('inactive');
+  });
+
+  it('retorna producto inactivo para admin', async () => {
+    const product = await useCase.execute('inactive-1', {
+      requesterId: 'other-user',
+      requesterRole: 'admin',
+    });
+
+    expect(product.status).toBe('inactive');
+  });
+
+  it('retorna producto inactivo para superadmin', async () => {
+    const product = await useCase.execute('inactive-1', {
+      requesterRole: 'superadmin',
+    });
+
+    expect(product.status).toBe('inactive');
+  });
+
+  it('lanza NotFoundError cuando usuario no owner intenta acceder a producto inactivo', async () => {
+    await expect(
+      useCase.execute('inactive-1', {
+        requesterId: 'other-user',
+        requesterRole: 'user',
+      }),
+    ).rejects.toMatchObject({
+      code: 'PRODUCT_NOT_FOUND',
+      statusCode: 404,
+    });
   });
 
   it('lanza NotFoundError PRODUCT_NOT_FOUND (404) cuando el id no existe', async () => {

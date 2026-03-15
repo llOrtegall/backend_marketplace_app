@@ -36,7 +36,10 @@ export async function getProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const product = await makeGetProductUseCase().execute(req.params.id);
+    const product = await makeGetProductUseCase().execute(req.params.id, {
+      requesterId: req.auth?.sub,
+      requesterRole: req.auth?.role,
+    });
     res.json({ success: true, data: toProductDTO(product) });
   } catch (err) {
     next(err);
@@ -54,6 +57,8 @@ export async function listProducts(
     const result = await makeListProductsUseCase().execute({
       filters,
       pagination: { page, limit, sortBy, order },
+      requesterId: req.auth?.sub,
+      requesterRole: req.auth?.role,
     });
     res.json({
       success: true,

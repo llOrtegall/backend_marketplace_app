@@ -17,6 +17,25 @@ declare global {
   }
 }
 
+export function optionalAuthenticate(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    return next();
+  }
+  const token = header.slice(7);
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
+    req.auth = payload;
+  } catch {
+    // invalid token → ignore silently, do not block the request
+  }
+  next();
+}
+
 export function authenticate(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {

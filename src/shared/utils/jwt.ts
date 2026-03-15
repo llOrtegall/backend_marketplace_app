@@ -25,14 +25,14 @@ export function signRefreshToken(userId: string): {
   const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_MS);
   const token = jwt.sign(
     { sub: userId, type: 'refresh', jti: randomUUID() },
-    env.JWT_SECRET,
+    env.JWT_REFRESH_SECRET,
     { expiresIn: '15d' },
   );
   return { token, expiresAt };
 }
 
 export function verifyRefreshToken(token: string): { sub: string } {
-  const payload = jwt.verify(token, env.JWT_SECRET) as {
+  const payload = jwt.verify(token, env.JWT_REFRESH_SECRET) as {
     sub: string;
     type: string;
   };

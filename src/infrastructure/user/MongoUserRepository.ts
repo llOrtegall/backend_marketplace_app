@@ -22,10 +22,8 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async existsByEmail(email: string): Promise<boolean> {
-    const count = await UserModel.countDocuments({
-      email: email.toLowerCase(),
-    });
-    return count > 0;
+    const doc = await UserModel.exists({ email: email.toLowerCase() });
+    return doc !== null;
   }
 
   async findAll(
@@ -37,9 +35,10 @@ export class MongoUserRepository implements UserRepository {
     if (filters.role) query.role = filters.role;
     if (filters.status) query.status = filters.status;
     if (filters.search) {
+      const escaped = filters.search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { name: { $regex: filters.search, $options: 'i' } },
-        { email: { $regex: filters.search, $options: 'i' } },
+        { name: { $regex: `^${escaped}`, $options: 'i' } },
+        { email: { $regex: `^${escaped}`, $options: 'i' } },
       ];
     }
 
@@ -75,7 +74,7 @@ export class MongoUserRepository implements UserRepository {
     return User.reconstitute({
       id: doc._id,
       name: doc.name,
-      email: Email.create(doc.email),
+      email: Email.fromPersistence(doc.email),
       passwordHash: doc.passwordHash,
       role: doc.role,
       status: doc.status,

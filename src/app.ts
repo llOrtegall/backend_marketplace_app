@@ -7,12 +7,18 @@ import { productRouter } from './presentation/product/product.routes';
 import { authRouter } from './presentation/user/auth.routes';
 import { userRouter } from './presentation/user/user.routes';
 import { errorHandler } from './shared/middleware/errorHandler';
+import { generalRateLimiter } from './shared/middleware/rateLimiter';
 
 export function createApp() {
   const app = express();
 
-  app.use(cors());
+  const corsOrigins =
+    env.CORS_ORIGINS === '*'
+      ? '*'
+      : env.CORS_ORIGINS.split(',').map((o) => o.trim());
+  app.use(cors({ origin: corsOrigins }));
   app.use(helmet());
+  app.use(generalRateLimiter);
   if (env.NODE_ENV !== 'test') {
     app.use(logs('dev'));
   }

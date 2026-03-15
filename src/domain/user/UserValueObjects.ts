@@ -14,6 +14,10 @@ export class Email {
     }
     return new Email(normalized);
   }
+
+  static fromPersistence(value: string): Email {
+    return new Email(value);
+  }
 }
 
 export type UserRole = 'superadmin' | 'admin' | 'user';

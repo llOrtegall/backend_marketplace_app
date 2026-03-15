@@ -8,21 +8,23 @@ import { GetPaymentUseCase } from './getPayment.usecase';
 import { HandleWompiEventUseCase } from './handleWompiEvent.usecase';
 import { InitiatePaymentUseCase } from './initiatePayment.usecase';
 
+const orderRepo = new MongoOrderRepository();
+const paymentRepo = new MongoPaymentRepository();
+const productRepo = new MongoProductRepository();
+const userRepo = new MongoUserRepository();
+const wompiGateway = new WompiGateway();
+const txManager = new MongoTransactionManager();
+
 export const makeInitiatePaymentUseCase = () =>
   new InitiatePaymentUseCase(
-    new MongoOrderRepository(),
-    new MongoPaymentRepository(),
-    new WompiGateway(),
-    new MongoUserRepository(),
+    orderRepo,
+    paymentRepo,
+    wompiGateway,
+    userRepo,
+    txManager,
   );
 
 export const makeHandleWompiEventUseCase = () =>
-  new HandleWompiEventUseCase(
-    new MongoPaymentRepository(),
-    new MongoOrderRepository(),
-    new MongoProductRepository(),
-    new MongoTransactionManager(),
-  );
+  new HandleWompiEventUseCase(paymentRepo, orderRepo, productRepo, txManager);
 
-export const makeGetPaymentUseCase = () =>
-  new GetPaymentUseCase(new MongoPaymentRepository());
+export const makeGetPaymentUseCase = () => new GetPaymentUseCase(paymentRepo);

@@ -1,5 +1,5 @@
 import type { RefreshTokenRepository } from '../../domain/user/RefreshTokenRepository';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import { AppError, UnauthorizedError } from '../../shared/errors/AppError';
 import { signAccessToken, signRefreshToken } from '../../shared/utils/jwt';
 import { verifyPassword } from '../../shared/utils/password';
@@ -14,15 +14,19 @@ export interface LoginResult {
   refreshToken: string;
 }
 
+const DUMMY_HASH =
+  '$2b$12$LcMfGmxKNWHrRVSBuCi9POtXWJJMIQnvDj5pVA.o8R.Tf8ZKjhfTe';
+
 export class LoginUserUseCase {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: IUserRepository,
     private readonly tokenRepo: RefreshTokenRepository,
   ) {}
 
   async execute(input: LoginDTO): Promise<LoginResult> {
     const user = await this.userRepo.findByEmail(input.email);
     if (!user) {
+      await verifyPassword(input.password, DUMMY_HASH); // constant-time guard
       throw new UnauthorizedError('Invalid credentials');
     }
 

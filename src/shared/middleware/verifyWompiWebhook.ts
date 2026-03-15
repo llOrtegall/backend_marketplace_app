@@ -6,7 +6,7 @@ import { env } from '../../config/env';
 
 export function verifyWompiWebhook(
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction,
 ) {
   try {
@@ -18,9 +18,8 @@ export function verifyWompiWebhook(
     }
     const payload = JSON.parse(rawBody.toString('utf8')) as WompiWebhookPayload;
     if (payload.event !== 'transaction.updated') {
-      // Not a transaction event — acknowledge and skip
-      req.body = payload;
-      return next();
+      // Unknown event type — acknowledge without processing
+      return res.status(200).json({ success: true });
     }
     const isValid = verifyWompiSignature(payload, env.WOMPI_EVENTS_SECRET);
     if (!isValid) {

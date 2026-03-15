@@ -1,21 +1,20 @@
 import type { ITransactionManager } from '../shared/ITransactionManager';
 import type { IOrderRepository } from '../../domain/order/OrderRepository';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
-import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { IProductRepository } from '../../domain/product/ProductRepository';
 import type { WompiTransactionData } from '../../domain/payment/PaymentGateway';
-import type { ClientSession } from 'mongoose';
 import { NotFoundError } from '../../shared/errors/AppError';
 
 export class HandleWompiEventUseCase {
   constructor(
     private readonly paymentRepo: IPaymentRepository,
     private readonly orderRepo: IOrderRepository,
-    private readonly productRepo: ProductRepository,
+    private readonly productRepo: IProductRepository,
     private readonly txManager: ITransactionManager,
   ) {}
 
   async execute(txData: WompiTransactionData): Promise<void> {
-    await this.txManager.runInTransaction(async (session: ClientSession) => {
+    await this.txManager.runInTransaction(async (session) => {
       const payment = await this.paymentRepo.findById(
         txData.reference,
         session,
@@ -49,11 +48,21 @@ export class HandleWompiEventUseCase {
             item.productId,
             session,
           );
-          if (product) {
-            const newStock = Math.max(0, product.stock - item.quantity);
-            const updatedProduct = product.update({ stock: newStock });
-            await this.productRepo.update(updatedProduct, session);
+          if (!product)
+            throw new NotFoundError(
+              'PRODUCT_NOT_FOUND',
+              `Product '${item.productId}' not found during stock deduction`,
+            );
+
+          if (product.stock < item.quantity) {
+            console.warn(
+              `[HandleWompiEvent] Stock inconsistency: product '${item.productId}' has stock=${product.stock} but order requires quantity=${item.quantity}. Deducting to 0.`,
+            );
           }
+
+          const newStock = Math.max(0, product.stock - item.quantity);
+          const updatedProduct = product.update({ stock: newStock });
+          await this.productRepo.update(updatedProduct, session);
         }
         const confirmedOrder = order.confirm();
         await this.orderRepo.update(confirmedOrder, session);

@@ -39,3 +39,7 @@ export function canManageRole(
 ): boolean {
   return ROLE_HIERARCHY[actorRole] > ROLE_HIERARCHY[targetRole];
 }
+
+export function isPrivilegedRole(role: UserRole): boolean {
+  return role === 'admin' || role === 'superadmin';
+}

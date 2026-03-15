@@ -1,12 +1,13 @@
 import type { ClientSession } from 'mongoose';
+import type { DbSession } from '../../domain/shared/DbSession';
 import { Payment } from '../../domain/payment/Payment';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import { PaymentModel, type PaymentDocument } from './PaymentSchema';
 
 export class MongoPaymentRepository implements IPaymentRepository {
-  async findById(id: string, session?: ClientSession): Promise<Payment | null> {
+  async findById(id: string, session?: DbSession): Promise<Payment | null> {
     const doc = await PaymentModel.findById(id)
-      .session(session ?? null)
+      .session((session as ClientSession) ?? null)
       .lean();
     if (!doc) return null;
     return this.toDomain(doc);
@@ -18,15 +19,17 @@ export class MongoPaymentRepository implements IPaymentRepository {
     return this.toDomain(doc);
   }
 
-  async save(payment: Payment): Promise<void> {
-    await PaymentModel.create(this.toPersistence(payment));
+  async save(payment: Payment, session?: DbSession): Promise<void> {
+    await PaymentModel.create([this.toPersistence(payment)], {
+      session: (session as ClientSession) ?? null,
+    });
   }
 
-  async update(payment: Payment, session?: ClientSession): Promise<void> {
+  async update(payment: Payment, session?: DbSession): Promise<void> {
     await PaymentModel.findByIdAndUpdate(
       payment.id,
       this.toPersistence(payment),
-      { session: session ?? null },
+      { session: (session as ClientSession) ?? null },
     );
   }
 

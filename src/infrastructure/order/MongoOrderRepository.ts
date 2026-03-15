@@ -1,4 +1,5 @@
 import type { ClientSession } from 'mongoose';
+import type { DbSession } from '../../domain/shared/DbSession';
 import { Order } from '../../domain/order/Order';
 import type {
   IOrderRepository,
@@ -18,9 +19,9 @@ import {
 } from './OrderSchema';
 
 export class MongoOrderRepository implements IOrderRepository {
-  async findById(id: string, session?: ClientSession): Promise<Order | null> {
+  async findById(id: string, session?: DbSession): Promise<Order | null> {
     const doc = await OrderModel.findById(id)
-      .session(session ?? null)
+      .session((session as ClientSession) ?? null)
       .lean();
     if (!doc) return null;
     return this.toDomain(doc);
@@ -57,9 +58,9 @@ export class MongoOrderRepository implements IOrderRepository {
     await OrderModel.create(this.toPersistence(order));
   }
 
-  async update(order: Order, session?: ClientSession): Promise<void> {
+  async update(order: Order, session?: DbSession): Promise<void> {
     await OrderModel.findByIdAndUpdate(order.id, this.toPersistence(order), {
-      session: session ?? null,
+      session: (session as ClientSession) ?? null,
     });
   }
 

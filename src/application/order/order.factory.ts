@@ -5,14 +5,11 @@ import { CreateOrderUseCase } from './createOrder.usecase';
 import { GetOrderUseCase } from './getOrder.usecase';
 import { ListOrdersUseCase } from './listOrders.usecase';
 
+const orderRepo = new MongoOrderRepository();
+const productRepo = new MongoProductRepository();
+
 export const makeCreateOrderUseCase = () =>
-  new CreateOrderUseCase(
-    new MongoOrderRepository(),
-    new MongoProductRepository(),
-  );
-export const makeGetOrderUseCase = () =>
-  new GetOrderUseCase(new MongoOrderRepository());
-export const makeListOrdersUseCase = () =>
-  new ListOrdersUseCase(new MongoOrderRepository());
-export const makeCancelOrderUseCase = () =>
-  new CancelOrderUseCase(new MongoOrderRepository());
+  new CreateOrderUseCase(orderRepo, productRepo);
+export const makeGetOrderUseCase = () => new GetOrderUseCase(orderRepo);
+export const makeListOrdersUseCase = () => new ListOrdersUseCase(orderRepo);
+export const makeCancelOrderUseCase = () => new CancelOrderUseCase(orderRepo);

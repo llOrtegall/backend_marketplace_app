@@ -1,5 +1,5 @@
 import type { User } from '../../domain/user/User';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import { NotFoundError } from '../../shared/errors/AppError';
 
 export interface PromoteToAdminDTO {
@@ -8,7 +8,7 @@ export interface PromoteToAdminDTO {
 }
 
 export class PromoteToAdminUseCase {
-  constructor(private readonly repo: UserRepository) {}
+  constructor(private readonly repo: IUserRepository) {}
 
   async execute(input: PromoteToAdminDTO): Promise<User> {
     const [target, actor] = await Promise.all([

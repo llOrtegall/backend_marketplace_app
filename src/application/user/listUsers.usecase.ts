@@ -2,7 +2,7 @@ import type { PaginatedResult } from '../../shared/types/ApiResponse';
 import type { User } from '../../domain/user/User';
 import type {
   UserFilters,
-  UserRepository,
+  IUserRepository,
 } from '../../domain/user/UserRepository';
 
 export interface ListUsersInput {
@@ -12,7 +12,7 @@ export interface ListUsersInput {
 }
 
 export class ListUsersUseCase {
-  constructor(private readonly repo: UserRepository) {}
+  constructor(private readonly repo: IUserRepository) {}
 
   async execute(input: ListUsersInput): Promise<PaginatedResult<User>> {
     return this.repo.findAll(input.filters, {

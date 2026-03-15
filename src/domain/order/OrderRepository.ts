@@ -1,4 +1,4 @@
-import type { ClientSession } from 'mongoose';
+import type { DbSession } from '../shared/DbSession';
 import type { PaginatedResult } from '../../shared/types/ApiResponse';
 import type { Order } from './Order';
 import type { OrderStatus } from './OrderValueObjects';
@@ -13,11 +13,11 @@ export interface OrderPaginationOptions {
 }
 
 export interface IOrderRepository {
-  findById(id: string, session?: ClientSession): Promise<Order | null>;
+  findById(id: string, session?: DbSession): Promise<Order | null>;
   findAll(
     filters: OrderFilters,
     pagination: OrderPaginationOptions,
   ): Promise<PaginatedResult<Order>>;
   save(order: Order): Promise<void>;
-  update(order: Order, session?: ClientSession): Promise<void>;
+  update(order: Order, session?: DbSession): Promise<void>;
 }

@@ -1,11 +1,12 @@
 import type { ClientSession } from 'mongoose';
+import type { DbSession } from '../../domain/shared/DbSession';
 import { AppError } from '../../shared/errors/AppError';
 import { Product } from '../../domain/product/Product';
 import type {
   PaginatedResult,
   PaginationOptions,
   ProductFilters,
-  ProductRepository,
+  IProductRepository,
 } from '../../domain/product/ProductRepository';
 import { Price, Stock } from '../../domain/product/ProductValueObjects';
 import { ProductModel, type ProductDocument } from './ProductSchema';
@@ -25,10 +26,10 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } {
   }
 }
 
-export class MongoProductRepository implements ProductRepository {
-  async findById(id: string, session?: ClientSession): Promise<Product | null> {
+export class MongoProductRepository implements IProductRepository {
+  async findById(id: string, session?: DbSession): Promise<Product | null> {
     const doc = await ProductModel.findById(id)
-      .session(session ?? null)
+      .session((session as ClientSession) ?? null)
       .lean();
     if (!doc) return null;
     return this.toDomain(doc);
@@ -106,11 +107,11 @@ export class MongoProductRepository implements ProductRepository {
     await ProductModel.create(this.toPersistence(product));
   }
 
-  async update(product: Product, session?: ClientSession): Promise<void> {
+  async update(product: Product, session?: DbSession): Promise<void> {
     await ProductModel.findByIdAndUpdate(
       product.id,
       this.toPersistence(product),
-      { session: session ?? null },
+      { session: (session as ClientSession) ?? null },
     );
   }
 

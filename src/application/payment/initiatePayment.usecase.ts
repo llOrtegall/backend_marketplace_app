@@ -7,7 +7,8 @@ import type {
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { PaymentMethod } from '../../domain/payment/PaymentValueObjects';
 import type { IOrderRepository } from '../../domain/order/OrderRepository';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
+import type { ITransactionManager } from '../shared/ITransactionManager';
 import {
   ForbiddenError,
   NotFoundError,
@@ -31,7 +32,8 @@ export class InitiatePaymentUseCase {
     private readonly orderRepo: IOrderRepository,
     private readonly paymentRepo: IPaymentRepository,
     private readonly gateway: IPaymentGateway,
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: IUserRepository,
+    private readonly txManager: ITransactionManager,
   ) {}
 
   async execute(input: InitiatePaymentDTO): Promise<Payment> {
@@ -82,8 +84,10 @@ export class InitiatePaymentUseCase {
       .transitionTo('AWAITING_PAYMENT')
       .linkPayment(payment.id);
 
-    await this.paymentRepo.save(updatedPayment);
-    await this.orderRepo.update(updatedOrder);
+    await this.txManager.runInTransaction(async (session) => {
+      await this.paymentRepo.save(updatedPayment, session);
+      await this.orderRepo.update(updatedOrder, session);
+    });
 
     return updatedPayment;
   }

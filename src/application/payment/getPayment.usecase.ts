@@ -1,5 +1,6 @@
 import type { Payment } from '../../domain/payment/Payment';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
+import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
 
@@ -16,8 +17,7 @@ export class GetPaymentUseCase {
     const payment = await this.repo.findById(input.paymentId);
     if (!payment)
       throw new NotFoundError('PAYMENT_NOT_FOUND', 'Payment not found');
-    const isPrivileged =
-      input.requesterRole === 'admin' || input.requesterRole === 'superadmin';
+    const isPrivileged = isPrivilegedRole(input.requesterRole);
     if (payment.buyerId !== input.requesterId && !isPrivileged)
       throw new ForbiddenError(
         'PAYMENT_FORBIDDEN',

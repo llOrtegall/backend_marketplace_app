@@ -13,7 +13,9 @@ export const generalRateLimiter = rateLimit({
   limit: 200,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  skip: () => process.env.NODE_ENV === 'test',
+  skip: (req) =>
+    process.env.NODE_ENV === 'test' ||
+    (req.method === 'POST' && req.path === '/api/v1/payments/webhook'),
   message: rateLimitMessage,
 });
 

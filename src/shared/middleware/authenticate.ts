@@ -30,10 +30,10 @@ export function optionalAuthenticate(
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
     req.auth = payload;
+    next();
   } catch {
-    // invalid token → ignore silently, do not block the request
+    next(new UnauthorizedError('Invalid or expired token')); // token presente pero inválido → 401
   }
-  next();
 }
 
 export function requireAuth(req: { auth?: AuthPayload }): AuthPayload {

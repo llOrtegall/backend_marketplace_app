@@ -33,9 +33,7 @@ export async function handleWompiWebhook(
 ): Promise<void> {
   try {
     const payload = req.body as WompiWebhookPayload;
-    if (payload.event === 'transaction.updated') {
-      await makeHandleWompiEventUseCase().execute(payload.data.transaction);
-    }
+    await makeHandleWompiEventUseCase().execute(payload.data.transaction);
     res.status(200).json({ success: true });
   } catch (err) {
     next(err);

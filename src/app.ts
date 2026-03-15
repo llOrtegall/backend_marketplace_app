@@ -24,7 +24,11 @@ export function createApp() {
   if (env.NODE_ENV !== 'test') {
     app.use(logs('dev'));
   }
-  app.use(express.json());
+  // Skip express.json() for the webhook path — it uses express.raw() to preserve the raw body for signature verification
+  app.use((req, _res, next) => {
+    if (req.path === '/api/v1/payments/webhook') return next();
+    return express.json()(req, _res, next);
+  });
   app.use(express.urlencoded({ extended: true }));
 
   app.get('/', (_req, res) => {

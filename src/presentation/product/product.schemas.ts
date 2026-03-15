@@ -3,8 +3,8 @@ import { z } from 'zod';
 export const createProductSchema = z.object({
   name: z.string().min(3).max(120),
   description: z.string().min(10).max(2000),
-  price: z.number(),
-  stock: z.number(),
+  price: z.number().positive(),
+  stock: z.number().int().min(0),
   category: z.string().min(2).max(60),
   images: z.array(z.string().url()).min(1).max(10),
 });
@@ -13,8 +13,8 @@ export const updateProductSchema = z
   .object({
     name: z.string().min(3).max(120).optional(),
     description: z.string().min(10).max(2000).optional(),
-    price: z.number().optional(),
-    stock: z.number().optional(),
+    price: z.number().positive().optional(),
+    stock: z.number().int().min(0).optional(),
     category: z.string().min(2).max(60).optional(),
     images: z.array(z.string().url()).min(1).max(10).optional(),
     status: z.enum(['active', 'inactive']).optional(),

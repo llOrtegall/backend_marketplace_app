@@ -22,7 +22,7 @@ export interface PaymentDocument {
 const paymentSchema = new Schema<PaymentDocument>(
   {
     _id: { type: String, required: true },
-    orderId: { type: String, required: true, index: true },
+    orderId: { type: String, required: true, unique: true },
     buyerId: { type: String, required: true, index: true },
     amountCOP: { type: Number, required: true },
     method: {

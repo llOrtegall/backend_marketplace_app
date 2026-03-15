@@ -11,7 +11,6 @@ import type {
 } from '../../domain/user/RefreshTokenRepository';
 import type { User } from '../../domain/user/User';
 import type {
-  PaginatedUsers,
   UserFilters,
   UserPagination,
   UserRepository,
@@ -50,7 +49,7 @@ export function createMockUserRepository(
     async findAll(
       filters: UserFilters,
       pagination: UserPagination,
-    ): Promise<PaginatedUsers> {
+    ): Promise<PaginatedResult<User>> {
       let items = [...store.values()];
       if (filters.role) items = items.filter((u) => u.role === filters.role);
       if (filters.status)

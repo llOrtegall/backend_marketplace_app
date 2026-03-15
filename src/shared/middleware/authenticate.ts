@@ -1,11 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
+import type { UserRole } from '../../domain/user/UserValueObjects';
 import { UnauthorizedError } from '../errors/AppError';
 
 export interface AuthPayload {
   sub: string; // userId
-  role: string;
+  role: UserRole;
 }
 
 declare global {

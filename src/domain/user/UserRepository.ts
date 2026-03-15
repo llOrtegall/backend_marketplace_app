@@ -1,3 +1,4 @@
+import type { PaginatedResult } from '../../shared/types/ApiResponse';
 import type { User } from './User';
 import type { UserRole, UserStatus } from './UserValueObjects';
 
@@ -12,21 +13,13 @@ export interface UserPagination {
   limit: number;
 }
 
-export interface PaginatedUsers {
-  items: User[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
 export interface UserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findAll(
     filters: UserFilters,
     pagination: UserPagination,
-  ): Promise<PaginatedUsers>;
+  ): Promise<PaginatedResult<User>>;
   save(user: User): Promise<void>;
   update(user: User): Promise<void>;
   existsByEmail(email: string): Promise<boolean>;

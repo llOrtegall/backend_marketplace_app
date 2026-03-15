@@ -4,7 +4,7 @@ import { env } from '../../config/env';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 import type { AuthPayload } from '../middleware/authenticate';
 
-const ACCESS_EXPIRES = '1h';
+const ACCESS_EXPIRES = '15m';
 const REFRESH_EXPIRES_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
 
 export function signAccessToken(payload: {

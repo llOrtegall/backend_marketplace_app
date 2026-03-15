@@ -67,6 +67,9 @@ export class Product {
   }
 
   update(changes: UpdateProductInput): Product {
+    if (changes.status !== undefined) {
+      this.assertTransition(changes.status);
+    }
     return new Product({
       ...this.props,
       name: changes.name ?? this.props.name,

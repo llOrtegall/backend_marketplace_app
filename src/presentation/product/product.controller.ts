@@ -6,7 +6,11 @@ import {
   makeListProductsUseCase,
   makeUpdateProductUseCase,
 } from '../../application/product/product.factory';
-import type { CreateProductBody, UpdateProductBody } from './product.schemas';
+import type {
+  CreateProductBody,
+  ListProductsQuery,
+  UpdateProductBody,
+} from './product.schemas';
 import { toProductDTO } from './product.types';
 
 export async function createProduct(
@@ -45,7 +49,8 @@ export async function listProducts(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { page, limit, sortBy, order, ...filters } = req.query as any;
+    const { page, limit, sortBy, order, ...filters } =
+      req.query as unknown as ListProductsQuery;
     const result = await makeListProductsUseCase().execute({
       filters,
       pagination: { page, limit, sortBy, order },

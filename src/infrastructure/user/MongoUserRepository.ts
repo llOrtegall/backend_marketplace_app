@@ -1,6 +1,6 @@
 import { User } from '../../domain/user/User';
+import type { PaginatedResult } from '../../shared/types/ApiResponse';
 import type {
-  PaginatedUsers,
   UserFilters,
   UserPagination,
   UserRepository,
@@ -31,7 +31,7 @@ export class MongoUserRepository implements UserRepository {
   async findAll(
     filters: UserFilters,
     pagination: UserPagination,
-  ): Promise<PaginatedUsers> {
+  ): Promise<PaginatedResult<User>> {
     const query: Record<string, unknown> = {};
 
     if (filters.role) query.role = filters.role;

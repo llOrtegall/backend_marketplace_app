@@ -3,13 +3,8 @@ import { z } from 'zod';
 export const createProductSchema = z.object({
   name: z.string().min(3).max(120),
   description: z.string().min(10).max(2000),
-  price: z
-    .number()
-    .positive()
-    .refine((v) => Math.round(v * 100) / 100 === v, {
-      message: 'Price must have at most 2 decimal places',
-    }),
-  stock: z.number().int().min(0),
+  price: z.number(),
+  stock: z.number(),
   category: z.string().min(2).max(60),
   images: z.array(z.string().url()).min(1).max(10),
 });
@@ -18,14 +13,8 @@ export const updateProductSchema = z
   .object({
     name: z.string().min(3).max(120).optional(),
     description: z.string().min(10).max(2000).optional(),
-    price: z
-      .number()
-      .positive()
-      .refine((v) => Math.round(v * 100) / 100 === v, {
-        message: 'Price must have at most 2 decimal places',
-      })
-      .optional(),
-    stock: z.number().int().min(0).optional(),
+    price: z.number().optional(),
+    stock: z.number().optional(),
     category: z.string().min(2).max(60).optional(),
     images: z.array(z.string().url()).min(1).max(10).optional(),
     status: z.enum(['active', 'inactive']).optional(),

@@ -7,7 +7,7 @@ export function authorize(...roles: UserRole[]) {
     if (!req.auth) {
       return next(new UnauthorizedError());
     }
-    if (!roles.includes(req.auth.role as UserRole)) {
+    if (!roles.includes(req.auth.role)) {
       return next(
         new ForbiddenError('FORBIDDEN', `Required role: ${roles.join(' or ')}`),
       );

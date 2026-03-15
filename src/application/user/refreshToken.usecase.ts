@@ -1,5 +1,5 @@
 import type { RefreshTokenRepository } from '../../domain/user/RefreshTokenRepository';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import { UnauthorizedError } from '../../shared/errors/AppError';
 import {
   signAccessToken,
@@ -10,7 +10,7 @@ import type { LoginResult } from './loginUser.usecase';
 
 export class RefreshTokenUseCase {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: IUserRepository,
     private readonly tokenRepo: RefreshTokenRepository,
   ) {}
 

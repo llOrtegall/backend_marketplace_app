@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { User } from '../../domain/user/User';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import { AppError } from '../../shared/errors/AppError';
 import { hashPassword } from '../../shared/utils/password';
 
@@ -11,7 +11,7 @@ export interface RegisterUserDTO {
 }
 
 export class RegisterUserUseCase {
-  constructor(private readonly repo: UserRepository) {}
+  constructor(private readonly repo: IUserRepository) {}
 
   async execute(input: RegisterUserDTO): Promise<User> {
     const exists = await this.repo.existsByEmail(input.email);

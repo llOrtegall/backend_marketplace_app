@@ -1,5 +1,5 @@
 import type { RefreshTokenRepository } from '../../domain/user/RefreshTokenRepository';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import { AppError, UnauthorizedError } from '../../shared/errors/AppError';
 import { signAccessToken, signRefreshToken } from '../../shared/utils/jwt';
 import { verifyPassword } from '../../shared/utils/password';
@@ -19,7 +19,7 @@ const DUMMY_HASH =
 
 export class LoginUserUseCase {
   constructor(
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: IUserRepository,
     private readonly tokenRepo: RefreshTokenRepository,
   ) {}
 

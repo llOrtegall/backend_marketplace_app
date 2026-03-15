@@ -3,12 +3,12 @@ import type { PaginatedResult } from '../../shared/types/ApiResponse';
 import type {
   UserFilters,
   UserPagination,
-  UserRepository,
+  IUserRepository,
 } from '../../domain/user/UserRepository';
 import { Email } from '../../domain/user/UserValueObjects';
 import { UserModel, type UserDocument } from './UserSchema';
 
-export class MongoUserRepository implements UserRepository {
+export class MongoUserRepository implements IUserRepository {
   async findById(id: string): Promise<User | null> {
     const doc = await UserModel.findById(id).lean();
     if (!doc) return null;

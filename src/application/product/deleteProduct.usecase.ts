@@ -1,4 +1,4 @@
-import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { IProductRepository } from '../../domain/product/ProductRepository';
 import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
@@ -10,7 +10,7 @@ export interface DeleteProductDTO {
 }
 
 export class DeleteProductUseCase {
-  constructor(private readonly repo: ProductRepository) {}
+  constructor(private readonly repo: IProductRepository) {}
 
   async execute(input: DeleteProductDTO): Promise<void> {
     const product = await this.repo.findById(input.productId);

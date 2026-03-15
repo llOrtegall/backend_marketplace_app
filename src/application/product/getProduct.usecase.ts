@@ -1,5 +1,5 @@
 import type { Product } from '../../domain/product/Product';
-import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { IProductRepository } from '../../domain/product/ProductRepository';
 import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 import { NotFoundError } from '../../shared/errors/AppError';
@@ -10,7 +10,7 @@ export interface GetProductContext {
 }
 
 export class GetProductUseCase {
-  constructor(private readonly repo: ProductRepository) {}
+  constructor(private readonly repo: IProductRepository) {}
 
   async execute(id: string, ctx: GetProductContext = {}): Promise<Product> {
     const product = await this.repo.findById(id);

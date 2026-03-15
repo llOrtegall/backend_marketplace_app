@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Order } from '../../domain/order/Order';
 import type { IOrderRepository } from '../../domain/order/OrderRepository';
-import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { IProductRepository } from '../../domain/product/ProductRepository';
 import {
   NotFoundError,
   UnprocessableError,
@@ -19,7 +19,7 @@ export interface CreateOrderDTO {
 export class CreateOrderUseCase {
   constructor(
     private readonly orderRepo: IOrderRepository,
-    private readonly productRepo: ProductRepository,
+    private readonly productRepo: IProductRepository,
   ) {}
 
   async execute(input: CreateOrderDTO): Promise<Order> {

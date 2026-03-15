@@ -1,10 +1,10 @@
 import type { User } from '../../domain/user/User';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
 
 export class GetUserUseCase {
-  constructor(private readonly repo: UserRepository) {}
+  constructor(private readonly repo: IUserRepository) {}
 
   async execute(
     targetId: string,

@@ -3,7 +3,7 @@ import type {
   PaginatedResult,
   PaginationOptions,
   ProductFilters,
-  ProductRepository,
+  IProductRepository,
 } from '../../domain/product/ProductRepository';
 import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
 import type { UserRole } from '../../domain/user/UserValueObjects';
@@ -16,7 +16,7 @@ export interface ListProductsInput {
 }
 
 export class ListProductsUseCase {
-  constructor(private readonly repo: ProductRepository) {}
+  constructor(private readonly repo: IProductRepository) {}
 
   async execute(input: ListProductsInput): Promise<PaginatedResult<Product>> {
     const isPrivileged = isPrivilegedRole(input.requesterRole ?? 'user');

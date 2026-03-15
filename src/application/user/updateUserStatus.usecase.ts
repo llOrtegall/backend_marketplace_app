@@ -1,5 +1,5 @@
 import type { User } from '../../domain/user/User';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import type { UserStatus } from '../../domain/user/UserValueObjects';
 import { NotFoundError } from '../../shared/errors/AppError';
 
@@ -10,7 +10,7 @@ export interface UpdateUserStatusDTO {
 }
 
 export class UpdateUserStatusUseCase {
-  constructor(private readonly repo: UserRepository) {}
+  constructor(private readonly repo: IUserRepository) {}
 
   async execute(input: UpdateUserStatusDTO): Promise<User> {
     const [target, actor] = await Promise.all([

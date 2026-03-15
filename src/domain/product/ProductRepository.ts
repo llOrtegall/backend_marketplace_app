@@ -21,7 +21,7 @@ export interface PaginationOptions {
   cursor?: string;
 }
 
-export interface ProductRepository {
+export interface IProductRepository {
   findById(id: string, session?: DbSession): Promise<Product | null>;
   findAll(
     filters: ProductFilters,

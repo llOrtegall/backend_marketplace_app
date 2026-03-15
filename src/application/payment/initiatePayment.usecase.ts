@@ -7,7 +7,7 @@ import type {
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { PaymentMethod } from '../../domain/payment/PaymentValueObjects';
 import type { IOrderRepository } from '../../domain/order/OrderRepository';
-import type { UserRepository } from '../../domain/user/UserRepository';
+import type { IUserRepository } from '../../domain/user/UserRepository';
 import type { ITransactionManager } from '../shared/ITransactionManager';
 import {
   ForbiddenError,
@@ -32,7 +32,7 @@ export class InitiatePaymentUseCase {
     private readonly orderRepo: IOrderRepository,
     private readonly paymentRepo: IPaymentRepository,
     private readonly gateway: IPaymentGateway,
-    private readonly userRepo: UserRepository,
+    private readonly userRepo: IUserRepository,
     private readonly txManager: ITransactionManager,
   ) {}
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Product } from '../../domain/product/Product';
-import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { IProductRepository } from '../../domain/product/ProductRepository';
 
 export interface CreateProductDTO {
   name: string;
@@ -13,7 +13,7 @@ export interface CreateProductDTO {
 }
 
 export class CreateProductUseCase {
-  constructor(private readonly repo: ProductRepository) {}
+  constructor(private readonly repo: IProductRepository) {}
 
   async execute(input: CreateProductDTO): Promise<Product> {
     const product = Product.create({ id: randomUUID(), ...input });

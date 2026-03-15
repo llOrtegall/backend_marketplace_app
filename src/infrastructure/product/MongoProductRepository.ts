@@ -6,7 +6,7 @@ import type {
   PaginatedResult,
   PaginationOptions,
   ProductFilters,
-  ProductRepository,
+  IProductRepository,
 } from '../../domain/product/ProductRepository';
 import { Price, Stock } from '../../domain/product/ProductValueObjects';
 import { ProductModel, type ProductDocument } from './ProductSchema';
@@ -26,7 +26,7 @@ function decodeCursor(cursor: string): { createdAt: Date; id: string } {
   }
 }
 
-export class MongoProductRepository implements ProductRepository {
+export class MongoProductRepository implements IProductRepository {
   async findById(id: string, session?: DbSession): Promise<Product | null> {
     const doc = await ProductModel.findById(id)
       .session((session as ClientSession) ?? null)

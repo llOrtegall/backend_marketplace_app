@@ -1,7 +1,7 @@
 import type { ITransactionManager } from '../shared/ITransactionManager';
 import type { IOrderRepository } from '../../domain/order/OrderRepository';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
-import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { IProductRepository } from '../../domain/product/ProductRepository';
 import type { WompiTransactionData } from '../../domain/payment/PaymentGateway';
 import { NotFoundError } from '../../shared/errors/AppError';
 
@@ -9,7 +9,7 @@ export class HandleWompiEventUseCase {
   constructor(
     private readonly paymentRepo: IPaymentRepository,
     private readonly orderRepo: IOrderRepository,
-    private readonly productRepo: ProductRepository,
+    private readonly productRepo: IProductRepository,
     private readonly txManager: ITransactionManager,
   ) {}
 

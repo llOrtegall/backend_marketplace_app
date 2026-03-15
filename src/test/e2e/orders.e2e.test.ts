@@ -312,12 +312,12 @@ describe('GET /api/v1/orders/:id', () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/v1/orders/:id/cancel
+// PATCH /api/v1/orders/:id/cancel
 // ---------------------------------------------------------------------------
 
-describe('POST /api/v1/orders/:id/cancel', () => {
+describe('PATCH /api/v1/orders/:id/cancel', () => {
   it('retorna 401 sin autenticación', async () => {
-    const res = await request(app).post('/api/v1/orders/some-id/cancel');
+    const res = await request(app).patch('/api/v1/orders/some-id/cancel');
 
     expect(res.status).toBe(401);
   });
@@ -331,7 +331,7 @@ describe('POST /api/v1/orders/:id/cancel', () => {
     const orderId = createRes.body.data.id as string;
 
     const res = await request(app)
-      .post(`/api/v1/orders/${orderId}/cancel`)
+      .patch(`/api/v1/orders/${orderId}/cancel`)
       .set('Authorization', `Bearer ${buyerToken}`);
 
     expect(res.status).toBe(204);
@@ -347,7 +347,7 @@ describe('POST /api/v1/orders/:id/cancel', () => {
 
     const { accessToken: otherToken } = await registerAndLogin(otherBuyerData);
     const res = await request(app)
-      .post(`/api/v1/orders/${orderId}/cancel`)
+      .patch(`/api/v1/orders/${orderId}/cancel`)
       .set('Authorization', `Bearer ${otherToken}`);
 
     expect(res.status).toBe(403);
@@ -363,11 +363,11 @@ describe('POST /api/v1/orders/:id/cancel', () => {
     const orderId = createRes.body.data.id as string;
 
     await request(app)
-      .post(`/api/v1/orders/${orderId}/cancel`)
+      .patch(`/api/v1/orders/${orderId}/cancel`)
       .set('Authorization', `Bearer ${buyerToken}`);
 
     const res = await request(app)
-      .post(`/api/v1/orders/${orderId}/cancel`)
+      .patch(`/api/v1/orders/${orderId}/cancel`)
       .set('Authorization', `Bearer ${buyerToken}`);
 
     expect(res.status).toBe(422);

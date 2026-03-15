@@ -48,11 +48,21 @@ export class HandleWompiEventUseCase {
             item.productId,
             session,
           );
-          if (product) {
-            const newStock = Math.max(0, product.stock - item.quantity);
-            const updatedProduct = product.update({ stock: newStock });
-            await this.productRepo.update(updatedProduct, session);
+          if (!product)
+            throw new NotFoundError(
+              'PRODUCT_NOT_FOUND',
+              `Product '${item.productId}' not found during stock deduction`,
+            );
+
+          if (product.stock < item.quantity) {
+            console.warn(
+              `[HandleWompiEvent] Stock inconsistency: product '${item.productId}' has stock=${product.stock} but order requires quantity=${item.quantity}. Deducting to 0.`,
+            );
           }
+
+          const newStock = Math.max(0, product.stock - item.quantity);
+          const updatedProduct = product.update({ stock: newStock });
+          await this.productRepo.update(updatedProduct, session);
         }
         const confirmedOrder = order.confirm();
         await this.orderRepo.update(confirmedOrder, session);

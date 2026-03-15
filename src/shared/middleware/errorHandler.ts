@@ -1,6 +1,19 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../errors/AppError';
 
+function logUnhandledError(err: Error): void {
+  if (process.env.NODE_ENV === 'test') return;
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      timestamp: new Date().toISOString(),
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    }),
+  );
+}
+
 export function errorHandler(
   err: Error,
   _req: Request,
@@ -19,7 +32,7 @@ export function errorHandler(
     return;
   }
 
-  console.error('[Unhandled error]', err);
+  logUnhandledError(err);
 
   res.status(500).json({
     success: false,

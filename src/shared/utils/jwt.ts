@@ -5,7 +5,7 @@ import type { UserRole } from '../../domain/user/UserValueObjects';
 import type { AuthPayload } from '../middleware/authenticate';
 
 const ACCESS_EXPIRES = '15m';
-const REFRESH_EXPIRES_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
+const REFRESH_EXPIRES_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export function signAccessToken(payload: {
   sub: string;
@@ -26,7 +26,7 @@ export function signRefreshToken(userId: string): {
   const token = jwt.sign(
     { sub: userId, type: 'refresh', jti: randomUUID() },
     env.JWT_REFRESH_SECRET,
-    { expiresIn: '15d' },
+    { expiresIn: '7d' },
   );
   return { token, expiresAt };
 }

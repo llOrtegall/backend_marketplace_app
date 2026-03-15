@@ -19,4 +19,4 @@ orderRouter.get(
   listOrders,
 );
 orderRouter.get('/:id', authenticate, getOrder);
-orderRouter.post('/:id/cancel', authenticate, cancelOrder);
+orderRouter.patch('/:id/cancel', authenticate, cancelOrder);

@@ -14,6 +14,9 @@ export interface LoginResult {
   refreshToken: string;
 }
 
+const DUMMY_HASH =
+  '$2b$12$LcMfGmxKNWHrRVSBuCi9POtXWJJMIQnvDj5pVA.o8R.Tf8ZKjhfTe';
+
 export class LoginUserUseCase {
   constructor(
     private readonly userRepo: UserRepository,
@@ -23,6 +26,7 @@ export class LoginUserUseCase {
   async execute(input: LoginDTO): Promise<LoginResult> {
     const user = await this.userRepo.findByEmail(input.email);
     if (!user) {
+      await verifyPassword(input.password, DUMMY_HASH); // constant-time guard
       throw new UnauthorizedError('Invalid credentials');
     }
 

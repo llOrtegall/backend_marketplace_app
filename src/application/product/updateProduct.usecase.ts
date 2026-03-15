@@ -1,5 +1,6 @@
 import type { Product, UpdateProductInput } from '../../domain/product/Product';
 import type { ProductRepository } from '../../domain/product/ProductRepository';
+import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
 
@@ -18,8 +19,7 @@ export class UpdateProductUseCase {
       throw new NotFoundError('PRODUCT_NOT_FOUND', 'Product not found');
     }
 
-    const isPrivileged =
-      input.requesterRole === 'admin' || input.requesterRole === 'superadmin';
+    const isPrivileged = isPrivilegedRole(input.requesterRole);
     if (!product.isOwnedBy(input.requesterId) && !isPrivileged) {
       throw new ForbiddenError(
         'PRODUCT_FORBIDDEN',

@@ -5,6 +5,7 @@ import type {
   ProductFilters,
   ProductRepository,
 } from '../../domain/product/ProductRepository';
+import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
 import type { UserRole } from '../../domain/user/UserValueObjects';
 
 export interface ListProductsInput {
@@ -18,8 +19,7 @@ export class ListProductsUseCase {
   constructor(private readonly repo: ProductRepository) {}
 
   async execute(input: ListProductsInput): Promise<PaginatedResult<Product>> {
-    const isPrivileged =
-      input.requesterRole === 'admin' || input.requesterRole === 'superadmin';
+    const isPrivileged = isPrivilegedRole(input.requesterRole ?? 'user');
 
     let filters: ProductFilters = { status: 'active', ...input.filters };
 

@@ -3,7 +3,6 @@ import type { IOrderRepository } from '../../domain/order/OrderRepository';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { ProductRepository } from '../../domain/product/ProductRepository';
 import type { WompiTransactionData } from '../../domain/payment/PaymentGateway';
-import type { ClientSession } from 'mongoose';
 import { NotFoundError } from '../../shared/errors/AppError';
 
 export class HandleWompiEventUseCase {
@@ -15,7 +14,7 @@ export class HandleWompiEventUseCase {
   ) {}
 
   async execute(txData: WompiTransactionData): Promise<void> {
-    await this.txManager.runInTransaction(async (session: ClientSession) => {
+    await this.txManager.runInTransaction(async (session) => {
       const payment = await this.paymentRepo.findById(
         txData.reference,
         session,

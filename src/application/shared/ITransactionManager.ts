@@ -1,5 +1,5 @@
-import type { ClientSession } from 'mongoose';
+import type { DbSession } from '../../domain/shared/DbSession';
 
 export interface ITransactionManager {
-  runInTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T>;
+  runInTransaction<T>(fn: (session: DbSession) => Promise<T>): Promise<T>;
 }

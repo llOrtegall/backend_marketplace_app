@@ -36,6 +36,11 @@ export function optionalAuthenticate(
   next();
 }
 
+export function requireAuth(req: { auth?: AuthPayload }): AuthPayload {
+  if (!req.auth) throw new UnauthorizedError('Authentication required');
+  return req.auth;
+}
+
 export function authenticate(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {

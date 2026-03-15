@@ -1,7 +1,4 @@
-import {
-  UnprocessableError,
-  ValidationError,
-} from '../../shared/errors/AppError';
+import { ValidationError } from '../../shared/errors/AppError';
 
 export class Email {
   private constructor(readonly value: string) {}

@@ -11,6 +11,7 @@ import type {
   ListProductsQuery,
   UpdateProductBody,
 } from './product.schemas';
+import { requireAuth } from '../../shared/middleware/authenticate';
 import { toProductDTO } from './product.types';
 
 export async function createProduct(
@@ -19,7 +20,7 @@ export async function createProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const sellerId = req.auth!.sub;
+    const { sub: sellerId } = requireAuth(req);
     const product = await makeCreateProductUseCase().execute({
       ...req.body,
       sellerId,
@@ -84,10 +85,11 @@ export async function updateProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: requesterId, role: requesterRole } = requireAuth(req);
     const product = await makeUpdateProductUseCase().execute({
       productId: req.params.id,
-      requesterId: req.auth!.sub,
-      requesterRole: req.auth!.role,
+      requesterId,
+      requesterRole,
       ...req.body,
     });
     res.json({ success: true, data: toProductDTO(product) });
@@ -102,10 +104,11 @@ export async function deleteProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: requesterId, role: requesterRole } = requireAuth(req);
     await makeDeleteProductUseCase().execute({
       productId: req.params.id,
-      requesterId: req.auth!.sub,
-      requesterRole: req.auth!.role,
+      requesterId,
+      requesterRole,
     });
     res.status(204).send();
   } catch (err) {

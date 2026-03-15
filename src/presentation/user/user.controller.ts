@@ -5,6 +5,7 @@ import {
   makePromoteToAdminUseCase,
   makeUpdateUserStatusUseCase,
 } from '../../application/user/user.factory';
+import { requireAuth } from '../../shared/middleware/authenticate';
 import type { ListUsersQuery, UpdateStatusBody } from './user.schemas';
 import { toUserDTO } from './user.types';
 
@@ -14,11 +15,8 @@ export async function getUser(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const user = await makeGetUserUseCase().execute(
-      req.params.id,
-      req.auth!.sub,
-      req.auth!.role,
-    );
+    const { sub, role } = requireAuth(req);
+    const user = await makeGetUserUseCase().execute(req.params.id, sub, role);
     res.json({ success: true, data: toUserDTO(user) });
   } catch (err) {
     next(err);
@@ -58,9 +56,10 @@ export async function updateUserStatus(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: actorId } = requireAuth(req);
     const user = await makeUpdateUserStatusUseCase().execute({
       targetId: req.params.id,
-      actorId: req.auth!.sub,
+      actorId,
       status: req.body.status,
     });
     res.json({ success: true, data: toUserDTO(user) });
@@ -75,9 +74,10 @@ export async function promoteToAdmin(
   next: NextFunction,
 ): Promise<void> {
   try {
+    const { sub: actorId } = requireAuth(req);
     const user = await makePromoteToAdminUseCase().execute({
       targetId: req.params.id,
-      actorId: req.auth!.sub,
+      actorId,
     });
     res.json({ success: true, data: toUserDTO(user) });
   } catch (err) {

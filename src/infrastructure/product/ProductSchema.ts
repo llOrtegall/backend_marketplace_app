@@ -41,6 +41,6 @@ const productSchema = new Schema<ProductDocument>(
 
 productSchema.index({ sellerId: 1, status: 1 });
 productSchema.index({ category: 1, status: 1, price: 1 });
-productSchema.index({ status: 1, createdAt: -1 });
+productSchema.index({ status: 1, createdAt: -1, _id: -1 });
 
 export const ProductModel = model<ProductDocument>('Product', productSchema);

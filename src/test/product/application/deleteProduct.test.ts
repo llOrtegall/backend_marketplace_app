@@ -34,21 +34,33 @@ describe('DeleteProductUseCase', () => {
   });
 
   it("hace soft delete de producto activo (status → 'deleted')", async () => {
-    await useCase.execute({ productId: 'active-1', requesterId: 'seller-1' });
+    await useCase.execute({
+      productId: 'active-1',
+      requesterId: 'seller-1',
+      requesterRole: 'user',
+    });
 
     const updated = repo.updatedProducts[0];
     expect(updated?.status).toBe('deleted');
   });
 
   it('popula deletedAt al hacer el soft delete', async () => {
-    await useCase.execute({ productId: 'active-1', requesterId: 'seller-1' });
+    await useCase.execute({
+      productId: 'active-1',
+      requesterId: 'seller-1',
+      requesterRole: 'user',
+    });
 
     const updated = repo.updatedProducts[0];
     expect(updated?.deletedAt).toBeInstanceOf(Date);
   });
 
   it("permite soft delete desde 'inactive' (transición válida)", async () => {
-    await useCase.execute({ productId: 'inactive-1', requesterId: 'seller-1' });
+    await useCase.execute({
+      productId: 'inactive-1',
+      requesterId: 'seller-1',
+      requesterRole: 'user',
+    });
 
     const updated = repo.updatedProducts[0];
     expect(updated?.status).toBe('deleted');
@@ -58,6 +70,7 @@ describe('DeleteProductUseCase', () => {
     const result = await useCase.execute({
       productId: 'active-1',
       requesterId: 'seller-1',
+      requesterRole: 'user',
     });
 
     expect(result).toBeUndefined();
@@ -65,19 +78,53 @@ describe('DeleteProductUseCase', () => {
 
   it('lanza NotFoundError cuando el producto no existe', async () => {
     await expect(
-      useCase.execute({ productId: 'no-existe', requesterId: 'seller-1' }),
+      useCase.execute({
+        productId: 'no-existe',
+        requesterId: 'seller-1',
+        requesterRole: 'user',
+      }),
     ).rejects.toMatchObject({ code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
   });
 
   it("lanza NotFoundError cuando el producto ya está 'deleted'", async () => {
     await expect(
-      useCase.execute({ productId: 'deleted-1', requesterId: 'seller-1' }),
+      useCase.execute({
+        productId: 'deleted-1',
+        requesterId: 'seller-1',
+        requesterRole: 'user',
+      }),
     ).rejects.toMatchObject({ code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
   });
 
   it('lanza ForbiddenError PRODUCT_FORBIDDEN cuando el requesterId no es el seller', async () => {
     await expect(
-      useCase.execute({ productId: 'active-1', requesterId: 'otro-seller' }),
+      useCase.execute({
+        productId: 'active-1',
+        requesterId: 'otro-seller',
+        requesterRole: 'user',
+      }),
     ).rejects.toMatchObject({ code: 'PRODUCT_FORBIDDEN', statusCode: 403 });
+  });
+
+  it('admin puede hacer soft delete de un producto que no es suyo', async () => {
+    await useCase.execute({
+      productId: 'active-1',
+      requesterId: 'admin-user',
+      requesterRole: 'admin',
+    });
+
+    const updated = repo.updatedProducts[0];
+    expect(updated?.status).toBe('deleted');
+  });
+
+  it('superadmin puede hacer soft delete de un producto que no es suyo', async () => {
+    await useCase.execute({
+      productId: 'inactive-1',
+      requesterId: 'superadmin-user',
+      requesterRole: 'superadmin',
+    });
+
+    const updated = repo.updatedProducts[0];
+    expect(updated?.status).toBe('deleted');
   });
 });

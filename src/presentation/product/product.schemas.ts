@@ -33,6 +33,7 @@ export const listProductsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   sortBy: z.enum(['price', 'createdAt']).default('createdAt'),
   order: z.enum(['asc', 'desc']).default('desc'),
+  cursor: z.string().optional(),
 });
 
 export type CreateProductBody = z.infer<typeof createProductSchema>;

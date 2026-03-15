@@ -52,11 +52,11 @@ export async function listProducts(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { page, limit, sortBy, order, ...filters } =
+    const { page, limit, sortBy, order, cursor, ...filters } =
       req.query as unknown as ListProductsQuery;
     const result = await makeListProductsUseCase().execute({
       filters,
-      pagination: { page, limit, sortBy, order },
+      pagination: { page, limit, sortBy, order, cursor },
       requesterId: req.auth?.sub,
       requesterRole: req.auth?.role,
     });
@@ -68,6 +68,9 @@ export async function listProducts(
         limit: result.limit,
         total: result.total,
         totalPages: result.totalPages,
+        ...(result.nextCursor !== undefined && {
+          nextCursor: result.nextCursor,
+        }),
       },
     });
   } catch (err) {
@@ -84,6 +87,7 @@ export async function updateProduct(
     const product = await makeUpdateProductUseCase().execute({
       productId: req.params.id,
       requesterId: req.auth!.sub,
+      requesterRole: req.auth!.role,
       ...req.body,
     });
     res.json({ success: true, data: toProductDTO(product) });
@@ -101,6 +105,7 @@ export async function deleteProduct(
     await makeDeleteProductUseCase().execute({
       productId: req.params.id,
       requesterId: req.auth!.sub,
+      requesterRole: req.auth!.role,
     });
     res.status(204).send();
   } catch (err) {

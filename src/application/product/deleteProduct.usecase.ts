@@ -1,9 +1,11 @@
 import type { ProductRepository } from '../../domain/product/ProductRepository';
+import type { UserRole } from '../../domain/user/UserValueObjects';
 import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
 
 export interface DeleteProductDTO {
   productId: string;
   requesterId: string;
+  requesterRole: UserRole;
 }
 
 export class DeleteProductUseCase {
@@ -14,7 +16,10 @@ export class DeleteProductUseCase {
     if (!product || product.status === 'deleted') {
       throw new NotFoundError('PRODUCT_NOT_FOUND', 'Product not found');
     }
-    if (!product.isOwnedBy(input.requesterId)) {
+
+    const isPrivileged =
+      input.requesterRole === 'admin' || input.requesterRole === 'superadmin';
+    if (!product.isOwnedBy(input.requesterId) && !isPrivileged) {
       throw new ForbiddenError(
         'PRODUCT_FORBIDDEN',
         'You are not the owner of this product',

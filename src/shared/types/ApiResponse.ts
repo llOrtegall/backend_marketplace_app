@@ -4,6 +4,7 @@ export interface PaginatedResult<T> {
   page: number;
   limit: number;
   totalPages: number;
+  nextCursor?: string;
 }
 
 export type SuccessResponse<T> = {

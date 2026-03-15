@@ -17,6 +17,7 @@ export interface PaginationOptions {
   limit: number;
   sortBy: 'price' | 'createdAt';
   order: 'asc' | 'desc';
+  cursor?: string;
 }
 
 export interface ProductRepository {

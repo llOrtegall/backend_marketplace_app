@@ -4,7 +4,6 @@ import {
   Stock,
   VALID_STATUS_TRANSITIONS,
 } from '../../../domain/product/ProductValueObjects';
-import { UnprocessableError } from '../../../shared/errors/AppError';
 
 describe('Price.create', () => {
   it('crea precio con 2 decimales', () => {

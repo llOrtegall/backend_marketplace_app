@@ -134,10 +134,14 @@ export function createMockProductRepository(
         items = items.filter((p) => p.category === filters.category);
       if (filters.sellerId)
         items = items.filter((p) => p.sellerId === filters.sellerId);
-      if (filters.minPrice !== undefined)
-        items = items.filter((p) => p.price >= filters.minPrice!);
-      if (filters.maxPrice !== undefined)
-        items = items.filter((p) => p.price <= filters.maxPrice!);
+      if (filters.minPrice !== undefined) {
+        const min = filters.minPrice;
+        items = items.filter((p) => p.price >= min);
+      }
+      if (filters.maxPrice !== undefined) {
+        const max = filters.maxPrice;
+        items = items.filter((p) => p.price <= max);
+      }
       const start = (pagination.page - 1) * pagination.limit;
       const paginated = items.slice(start, start + pagination.limit);
       return {

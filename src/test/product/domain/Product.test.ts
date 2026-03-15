@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { Product } from '../../../domain/product/Product';
-import { Price, Stock } from '../../../domain/product/ProductValueObjects';
-import { AppError, UnprocessableError } from '../../../shared/errors/AppError';
+import { Price } from '../../../domain/product/ProductValueObjects';
+import { UnprocessableError } from '../../../shared/errors/AppError';
 import {
   makeDeletedProduct,
   makeInactiveProduct,

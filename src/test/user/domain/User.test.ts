@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test';
 import { User } from '../../../domain/user/User';
-import { AppError } from '../../../shared/errors/AppError';
 import {
   makeAdmin,
   makeBannedUser,

@@ -9,6 +9,11 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
+  WOMPI_PUBLIC_KEY: z.string().min(1),
+  WOMPI_PRIVATE_KEY: z.string().min(1),
+  WOMPI_INTEGRITY_SECRET: z.string().min(1),
+  WOMPI_EVENTS_SECRET: z.string().min(1),
+  WOMPI_BASE_URL: z.string().url().default('https://sandbox.wompi.co/v1'),
 });
 
 const parsed = envSchema.safeParse(process.env);

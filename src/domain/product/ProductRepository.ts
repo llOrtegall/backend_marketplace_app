@@ -29,4 +29,14 @@ export interface IProductRepository {
   ): Promise<PaginatedResult<Product>>;
   save(product: Product): Promise<void>;
   update(product: Product, session?: DbSession): Promise<void>;
+  decrementStockIfAvailable(
+    productId: string,
+    quantity: number,
+    session?: DbSession,
+  ): Promise<Product | null>;
+  restoreStock(
+    productId: string,
+    quantity: number,
+    session?: DbSession,
+  ): Promise<void>;
 }

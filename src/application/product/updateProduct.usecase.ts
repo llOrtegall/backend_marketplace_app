@@ -1,13 +1,10 @@
 import type { Product, UpdateProductInput } from '../../domain/product/Product';
 import type { IProductRepository } from '../../domain/product/ProductRepository';
-import { isPrivilegedRole } from '../../domain/user/UserValueObjects';
-import type { UserRole } from '../../domain/user/UserValueObjects';
-import { ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
+import { NotFoundError } from '../../shared/errors/AppError';
 
 export interface UpdateProductDTO extends UpdateProductInput {
   productId: string;
   requesterId: string;
-  requesterRole: UserRole;
 }
 
 export class UpdateProductUseCase {
@@ -19,19 +16,7 @@ export class UpdateProductUseCase {
       throw new NotFoundError('PRODUCT_NOT_FOUND', 'Product not found');
     }
 
-    if (!isPrivilegedRole(input.requesterRole)) {
-      throw new ForbiddenError(
-        'PRODUCT_FORBIDDEN',
-        'Only admin or superadmin can update products',
-      );
-    }
-
-    const {
-      productId: _pid,
-      requesterId: _rid,
-      requesterRole: _role,
-      ...changes
-    } = input;
+    const { productId: _pid, requesterId: _rid, ...changes } = input;
     const updated = product.update(changes);
     await this.repo.update(updated);
     return updated;

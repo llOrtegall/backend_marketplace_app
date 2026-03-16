@@ -107,6 +107,32 @@ export class MongoProductRepository implements IProductRepository {
     await ProductModel.create(this.toPersistence(product));
   }
 
+  async decrementStockIfAvailable(
+    productId: string,
+    quantity: number,
+    session?: DbSession,
+  ): Promise<Product | null> {
+    const doc = await ProductModel.findOneAndUpdate(
+      { _id: productId, stock: { $gte: quantity }, status: 'active' },
+      { $inc: { stock: -quantity }, $set: { updatedAt: new Date() } },
+      { new: true, session: (session as ClientSession) ?? null },
+    ).lean();
+    if (!doc) return null;
+    return this.toDomain(doc);
+  }
+
+  async restoreStock(
+    productId: string,
+    quantity: number,
+    session?: DbSession,
+  ): Promise<void> {
+    await ProductModel.findOneAndUpdate(
+      { _id: productId },
+      { $inc: { stock: quantity }, $set: { updatedAt: new Date() } },
+      { session: (session as ClientSession) ?? null },
+    );
+  }
+
   async update(product: Product, session?: DbSession): Promise<void> {
     await ProductModel.findByIdAndUpdate(
       product.id,

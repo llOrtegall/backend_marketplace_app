@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   authenticate,
   optionalAuthenticate,
-} from '../../shared/middleware/authenticate';
+} from '../../shared/middleware/middlewareInstances';
 import { authorize } from '../../shared/middleware/authorize';
 import { validate } from '../../shared/middleware/validate';
 import {

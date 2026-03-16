@@ -20,11 +20,10 @@ export async function createProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { sub: sellerId, role: requesterRole } = requireAuth(req);
+    const { sub: sellerId } = requireAuth(req);
     const product = await makeCreateProductUseCase().execute({
       ...req.body,
       sellerId,
-      requesterRole,
     });
     res.status(201).json({ success: true, data: toProductDTO(product) });
   } catch (err) {
@@ -86,11 +85,10 @@ export async function updateProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { sub: requesterId, role: requesterRole } = requireAuth(req);
+    const { sub: requesterId } = requireAuth(req);
     const product = await makeUpdateProductUseCase().execute({
       productId: req.params.id,
       requesterId,
-      requesterRole,
       ...req.body,
     });
     res.json({ success: true, data: toProductDTO(product) });
@@ -105,11 +103,10 @@ export async function deleteProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { sub: requesterId, role: requesterRole } = requireAuth(req);
+    const { sub: requesterId } = requireAuth(req);
     await makeDeleteProductUseCase().execute({
       productId: req.params.id,
       requesterId,
-      requesterRole,
     });
     res.status(204).send();
   } catch (err) {

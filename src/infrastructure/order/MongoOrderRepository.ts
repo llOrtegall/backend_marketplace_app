@@ -54,8 +54,10 @@ export class MongoOrderRepository implements IOrderRepository {
     };
   }
 
-  async save(order: Order): Promise<void> {
-    await OrderModel.create(this.toPersistence(order));
+  async save(order: Order, session?: DbSession): Promise<void> {
+    await OrderModel.create([this.toPersistence(order)], {
+      session: (session as ClientSession) ?? null,
+    });
   }
 
   async update(order: Order, session?: DbSession): Promise<void> {

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Order } from '../../domain/order/Order';
 import type { IOrderRepository } from '../../domain/order/OrderRepository';
 import type { IProductRepository } from '../../domain/product/ProductRepository';
+import type { ITransactionManager } from '../shared/ITransactionManager';
 import {
   NotFoundError,
   UnprocessableError,
@@ -20,6 +21,7 @@ export class CreateOrderUseCase {
   constructor(
     private readonly orderRepo: IOrderRepository,
     private readonly productRepo: IProductRepository,
+    private readonly txManager: ITransactionManager,
   ) {}
 
   async execute(input: CreateOrderDTO): Promise<Order> {
@@ -29,34 +31,57 @@ export class CreateOrderUseCase {
         'Order must have at least one item',
       );
 
-    const orderItems = await Promise.all(
-      input.items.map(async (item) => {
-        const product = await this.productRepo.findById(item.productId);
-        if (!product || product.status !== 'active')
-          throw new NotFoundError(
-            'PRODUCT_NOT_FOUND',
-            `Product '${item.productId}' not found or not available`,
+    let createdOrder: Order | null = null;
+
+    await this.txManager.runInTransaction(async (session) => {
+      const orderItems: {
+        productId: string;
+        productName: string;
+        unitPrice: number;
+        quantity: number;
+      }[] = [];
+
+      for (const item of input.items) {
+        const product = await this.productRepo.decrementStockIfAvailable(
+          item.productId,
+          item.quantity,
+          session,
+        );
+
+        if (!product) {
+          const existing = await this.productRepo.findById(
+            item.productId,
+            session,
           );
-        if (product.stock < item.quantity)
+          if (!existing || existing.status !== 'active') {
+            throw new NotFoundError(
+              'PRODUCT_NOT_FOUND',
+              `Product '${item.productId}' not found or not available`,
+            );
+          }
           throw new UnprocessableError(
             'INSUFFICIENT_STOCK',
-            `Insufficient stock for product '${product.name}'`,
+            `Insufficient stock for product '${existing.name}'`,
           );
-        return {
+        }
+
+        orderItems.push({
           productId: product.id,
           productName: product.name,
           unitPrice: product.price,
           quantity: item.quantity,
-        };
-      }),
-    );
+        });
+      }
 
-    const order = Order.create({
-      id: randomUUID(),
-      buyerId: input.buyerId,
-      items: orderItems,
+      const order = Order.create({
+        id: randomUUID(),
+        buyerId: input.buyerId,
+        items: orderItems,
+      });
+      await this.orderRepo.save(order, session);
+      createdOrder = order;
     });
-    await this.orderRepo.save(order);
-    return order;
+
+    return createdOrder!;
   }
 }

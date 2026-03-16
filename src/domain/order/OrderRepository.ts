@@ -18,6 +18,6 @@ export interface IOrderRepository {
     filters: OrderFilters,
     pagination: OrderPaginationOptions,
   ): Promise<PaginatedResult<Order>>;
-  save(order: Order): Promise<void>;
+  save(order: Order, session?: DbSession): Promise<void>;
   update(order: Order, session?: DbSession): Promise<void>;
 }

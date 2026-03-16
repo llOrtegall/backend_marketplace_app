@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../../shared/middleware/authenticate';
+import { authenticate } from '../../shared/middleware/middlewareInstances';
 import { validate } from '../../shared/middleware/validate';
 import {
   cancelOrder,

@@ -74,6 +74,12 @@ bun run test:e2e
 # Run full suite with dots reporter
 bun run test:dots
 
+# Watch unit/application suites
+bun run test:watch:unit
+
+# Watch end-to-end suite
+bun run test:watch:e2e
+
 # Watch mode (re-runs on file changes)
 bun test --watch
 

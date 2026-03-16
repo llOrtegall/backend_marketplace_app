@@ -5,20 +5,14 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch ./index.ts",
-    "test": "bun run test:unit && bun run test:e2e",
-    "test:unit": "bunx concurrently --names order,payment,product,user --prefix \"[{name}]\" --prefix-colors blue,green,magenta,cyan \"bun run test:order\" \"bun run test:payment\" \"bun run test:product\" \"bun run test:user\"",
-    "test:order": "bun test --env-file .env.test src/test/order/domain src/test/order/application",
-    "test:payment": "bun test --env-file .env.test src/test/payment/domain src/test/payment/application",
-    "test:product": "bun test --env-file .env.test src/test/product/domain src/test/product/application",
-    "test:user": "bun test --env-file .env.test src/test/user/domain src/test/user/application",
-    "test:e2e": "bun test --env-file .env.test src/test/e2e",
-    "test:dots": "bun run test:unit:dots && bun run test:e2e:dots",
-    "test:unit:dots": "bunx concurrently --names order,payment,product,user --prefix \"[{name}]\" --prefix-colors blue,green,magenta,cyan \"bun run test:order:dots\" \"bun run test:payment:dots\" \"bun run test:product:dots\" \"bun run test:user:dots\"",
-    "test:order:dots": "bun test --env-file .env.test --dots src/test/order/domain src/test/order/application",
-    "test:payment:dots": "bun test --env-file .env.test --dots src/test/payment/domain src/test/payment/application",
-    "test:product:dots": "bun test --env-file .env.test --dots src/test/product/domain src/test/product/application",
-    "test:user:dots": "bun test --env-file .env.test --dots src/test/user/domain src/test/user/application",
-    "test:e2e:dots": "bun test --env-file .env.test --dots src/test/e2e",
+    "test": "bun run scripts/run-tests.ts all",
+    "test:unit": "bun run scripts/run-tests.ts unit",
+    "test:e2e": "bun run scripts/run-tests.ts e2e",
+    "test:dots": "bun run scripts/run-tests.ts all --dots",
+    "test:unit:dots": "bun run scripts/run-tests.ts unit --dots",
+    "test:e2e:dots": "bun run scripts/run-tests.ts e2e --dots",
+    "test:watch:unit": "bun run scripts/run-tests.ts unit --watch",
+    "test:watch:e2e": "bun run scripts/run-tests.ts e2e --watch",
     "test:watch": "bun test --watch --env-file .env.test",
     "test:coverage": "bun test --coverage --env-file .env.test",
     "format": "bunx --bun @biomejs/biome format --write",
@@ -43,7 +37,6 @@
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.5.0",
     "@types/supertest": "^7.2.0",
-    "concurrently": "^9.2.1",
     "lint-staged": "^15.5.2",
     "mongodb-memory-server": "^11.0.1",
     "morgan": "^1.10.1",
@@ -54,8 +47,8 @@
     "typescript": "^5"
   },
   "simple-git-hooks": {
-    "pre-commit": "export PATH=$HOME/.bun/bin:$PATH && bunx lint-staged && bun run test",
-    "pre-push": "export PATH=$HOME/.bun/bin:$PATH && bun run test"
+    "pre-commit": "bun run scripts/run-hook.ts pre-commit",
+    "pre-push": "bun run scripts/run-hook.ts pre-push"
   },
   "lint-staged": {
     "*.{ts,tsx,js}": [

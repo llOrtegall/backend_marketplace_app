@@ -10,6 +10,8 @@ bun run test         # Run all tests (parallel unit/application + serial e2e)
 bun run test:dots    # Run all tests with dots reporter
 bun run test:unit    # Run unit/application suites in parallel by domain
 bun run test:e2e     # Run end-to-end tests serially
+bun run test:watch:unit  # Watch unit/application suites
+bun run test:watch:e2e   # Watch end-to-end suite
 bun test --watch     # Run tests in watch mode
 bun test --coverage  # Run tests with coverage report
 bun run lint         # Lint and auto-fix with Biome

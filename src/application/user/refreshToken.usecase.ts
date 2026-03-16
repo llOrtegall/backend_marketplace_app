@@ -1,6 +1,6 @@
 import type { RefreshTokenRepository } from '../../domain/user/RefreshTokenRepository';
 import type { IUserRepository } from '../../domain/user/UserRepository';
-import { UnauthorizedError } from '../../shared/errors/AppError';
+import { AppError, UnauthorizedError } from '../../shared/errors/AppError';
 import {
   signAccessToken,
   signRefreshToken,
@@ -31,8 +31,11 @@ export class RefreshTokenUseCase {
     }
 
     const user = await this.userRepo.findById(payload.sub);
-    if (!user || !user.isActive()) {
-      throw new UnauthorizedError('User not found or inactive');
+    if (!user) {
+      throw new UnauthorizedError('User not found');
+    }
+    if (!user.isActive()) {
+      throw new AppError('ACCOUNT_INACTIVE', 'Your account is not active', 403);
     }
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role });

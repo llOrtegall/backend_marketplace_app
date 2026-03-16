@@ -18,6 +18,7 @@ describe('CreateProductUseCase', () => {
     category: 'electronics',
     images: ['https://example.com/img.jpg'],
     sellerId: 'seller-1',
+    requesterRole: 'admin' as const,
   };
 
   beforeEach(() => {
@@ -80,5 +81,11 @@ describe('CreateProductUseCase', () => {
     await useCase.execute({ ...validInput, price: -1 }).catch(() => {});
 
     expect(repo.savedProducts).toHaveLength(0);
+  });
+
+  it('lanza ForbiddenError si un user intenta crear productos', async () => {
+    await expect(
+      useCase.execute({ ...validInput, requesterRole: 'user' }),
+    ).rejects.toMatchObject({ code: 'PRODUCT_FORBIDDEN', statusCode: 403 });
   });
 });

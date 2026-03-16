@@ -37,13 +37,16 @@ describe('GetProductUseCase', () => {
     });
   });
 
-  it('retorna producto inactivo para su propio seller', async () => {
-    const product = await useCase.execute('inactive-1', {
-      requesterId: 'seller-1',
-      requesterRole: 'user',
+  it('lanza NotFoundError cuando el seller es un user normal y accede a producto inactivo', async () => {
+    await expect(
+      useCase.execute('inactive-1', {
+        requesterId: 'seller-1',
+        requesterRole: 'user',
+      }),
+    ).rejects.toMatchObject({
+      code: 'PRODUCT_NOT_FOUND',
+      statusCode: 404,
     });
-
-    expect(product.status).toBe('inactive');
   });
 
   it('retorna producto inactivo para admin', async () => {
@@ -63,7 +66,7 @@ describe('GetProductUseCase', () => {
     expect(product.status).toBe('inactive');
   });
 
-  it('lanza NotFoundError cuando usuario no owner intenta acceder a producto inactivo', async () => {
+  it('lanza NotFoundError cuando un user normal intenta acceder a producto inactivo', async () => {
     await expect(
       useCase.execute('inactive-1', {
         requesterId: 'other-user',

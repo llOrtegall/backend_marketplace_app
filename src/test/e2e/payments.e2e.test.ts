@@ -13,6 +13,7 @@ import type {
   WompiTransactionData,
   WompiWebhookPayload,
 } from '../../domain/payment/PaymentGateway';
+import { UserModel } from '../../infrastructure/user/UserSchema';
 import { clearDB, startTestDB, stopTestDB } from './setup';
 
 const app = createApp();
@@ -57,12 +58,18 @@ const MOCK_REDIRECT_URL = 'https://checkout.wompi.co/l/test-redirect';
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function registerAndLogin(userData: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<{ accessToken: string }> {
+async function registerAndLogin(
+  userData: {
+    name: string;
+    email: string;
+    password: string;
+  },
+  role: 'user' | 'admin' | 'superadmin' = 'user',
+): Promise<{ accessToken: string }> {
   await request(app).post('/api/v1/auth/register').send(userData);
+  if (role !== 'user') {
+    await UserModel.updateOne({ email: userData.email }, { $set: { role } });
+  }
   const res = await request(app)
     .post('/api/v1/auth/login')
     .send({ email: userData.email, password: userData.password });
@@ -215,7 +222,10 @@ describe('POST /api/v1/payments/initiate', () => {
   });
 
   it('retorna 403 si el buyer no es dueño de la orden', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -237,7 +247,10 @@ describe('POST /api/v1/payments/initiate', () => {
   });
 
   it('retorna 422 si la orden no está en PENDING', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -263,7 +276,10 @@ describe('POST /api/v1/payments/initiate', () => {
   });
 
   it('retorna 201 y crea el payment exitosamente', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -285,6 +301,34 @@ describe('POST /api/v1/payments/initiate', () => {
     expect(res.body.data.method).toBe('NEQUI');
     expect(res.body.data.wompiTransactionId).toBe(MOCK_WOMPI_TX_ID);
     expect(res.body.data.wompiRedirectUrl).toBe(MOCK_REDIRECT_URL);
+  });
+  it('retorna 403 si el buyer fue baneado después del login', async () => {
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
+    const productId = await createProduct(sellerToken);
+
+    const { accessToken: buyerToken } = await registerAndLogin(buyerData);
+    const orderId = await createOrder(buyerToken, productId);
+
+    await UserModel.updateOne(
+      { email: buyerData.email },
+      { $set: { status: 'banned' } },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/payments/initiate')
+      .set('Authorization', `Bearer ${buyerToken}`)
+      .send({
+        orderId,
+        method: 'NEQUI',
+        acceptanceToken: 'acc_token',
+        personalDataAuthToken: 'personal_token',
+      });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
   });
 });
 
@@ -312,7 +356,10 @@ describe('GET /api/v1/payments/:id', () => {
   });
 
   it('retorna 403 si el usuario no es el dueño', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -328,7 +375,10 @@ describe('GET /api/v1/payments/:id', () => {
   });
 
   it('retorna 200 con el payment al buyer dueño', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -399,7 +449,10 @@ describe('POST /api/v1/payments/webhook', () => {
   });
 
   it('retorna 200 y confirma la orden cuando el pago es APPROVED', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -432,7 +485,10 @@ describe('POST /api/v1/payments/webhook', () => {
   });
 
   it('retorna 200 y cancela la orden cuando el pago es DECLINED', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);

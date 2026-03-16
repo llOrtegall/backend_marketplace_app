@@ -16,6 +16,8 @@ Authorization: Bearer <access_token>
 
 Access tokens are short-lived. Use the refresh token endpoint to obtain a new one.
 
+If a user is marked as `inactive` or `banned`, login, refresh, and authenticated operations are blocked.
+
 ## Response Format
 
 All successful responses follow this envelope:
@@ -240,6 +242,8 @@ No body required.
 
 Public (auth optional). Returns active products for unauthenticated users.
 
+Only `admin` and `superadmin` can list inactive products.
+
 **Query Parameters:**
 
 | Param | Type | Description |
@@ -261,11 +265,13 @@ Public (auth optional). Returns active products for unauthenticated users.
 
 Public (auth optional). Returns the product if it exists and is not deleted.
 
+Inactive products are only visible to `admin` and `superadmin`.
+
 ---
 
 ### POST /products
 
-**Auth required.**
+**Auth required. Role: `admin` or `superadmin`.**
 
 Create a new product. The authenticated user becomes the seller.
 
@@ -297,7 +303,7 @@ Create a new product. The authenticated user becomes the seller.
 
 ### PATCH /products/:id
 
-**Auth required.** Only the seller or a privileged role can update.
+**Auth required. Role: `admin` or `superadmin`.**
 
 **Body** (all fields optional, at least one required):
 
@@ -315,7 +321,7 @@ Status transitions: `active` ↔ `inactive`. Deleted products cannot be updated.
 
 ### DELETE /products/:id
 
-**Auth required.** Only the seller or a privileged role can delete.
+**Auth required. Role: `admin` or `superadmin`.**
 
 Performs a **soft delete** — the product is marked as `deleted` and hidden from listings but not removed from the database.
 

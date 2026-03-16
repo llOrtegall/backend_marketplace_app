@@ -18,11 +18,10 @@ export class DeleteProductUseCase {
       throw new NotFoundError('PRODUCT_NOT_FOUND', 'Product not found');
     }
 
-    const isPrivileged = isPrivilegedRole(input.requesterRole);
-    if (!product.isOwnedBy(input.requesterId) && !isPrivileged) {
+    if (!isPrivilegedRole(input.requesterRole)) {
       throw new ForbiddenError(
         'PRODUCT_FORBIDDEN',
-        'You are not the owner of this product',
+        'Only admin or superadmin can delete products',
       );
     }
 

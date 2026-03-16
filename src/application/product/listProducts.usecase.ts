@@ -27,15 +27,8 @@ export class ListProductsUseCase {
       if (isPrivileged) {
         // admin/superadmin can see all inactive products
         filters = { ...input.filters, status: 'inactive' };
-      } else if (input.requesterId) {
-        // authenticated seller: restrict to their own inactive products
-        filters = {
-          ...input.filters,
-          status: 'inactive',
-          sellerId: input.requesterId,
-        };
       } else {
-        // anonymous: silently fall back to active
+        // non-privileged users: silently fall back to active
         filters = { ...input.filters, status: 'active' };
       }
     }

@@ -19,10 +19,8 @@ export class GetProductUseCase {
     }
 
     if (product.status === 'inactive') {
-      const isOwner =
-        ctx.requesterId !== undefined && product.isOwnedBy(ctx.requesterId);
       const isPrivileged = isPrivilegedRole(ctx.requesterRole ?? 'user');
-      if (!isOwner && !isPrivileged) {
+      if (!isPrivileged) {
         throw new NotFoundError('PRODUCT_NOT_FOUND', 'Product not found');
       }
     }

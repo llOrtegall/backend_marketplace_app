@@ -8,6 +8,7 @@ import {
 } from 'bun:test';
 import request from 'supertest';
 import { createApp } from '../../app';
+import { UserModel } from '../../infrastructure/user/UserSchema';
 import { clearDB, startTestDB, stopTestDB } from './setup';
 
 const app = createApp();
@@ -27,8 +28,14 @@ const validProduct = {
   images: ['https://example.com/img1.jpg'],
 };
 
-async function registerAndLogin(userData = sellerData) {
+async function registerAndLogin(
+  userData = sellerData,
+  role: 'user' | 'admin' | 'superadmin' = 'user',
+) {
   await request(app).post('/api/v1/auth/register').send(userData);
+  if (role !== 'user') {
+    await UserModel.updateOne({ email: userData.email }, { $set: { role } });
+  }
   const res = await request(app)
     .post('/api/v1/auth/login')
     .send({ email: userData.email, password: userData.password });
@@ -53,8 +60,8 @@ describe('POST /api/v1/products', () => {
     expect(res.status).toBe(401);
   });
 
-  it('crea producto y retorna 201 con token válido', async () => {
-    const { accessToken } = await registerAndLogin();
+  it('crea producto y retorna 201 con token admin válido', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
 
     const res = await request(app)
       .post('/api/v1/products')
@@ -67,8 +74,19 @@ describe('POST /api/v1/products', () => {
     expect(res.body.data.status).toBe('active');
   });
 
-  it('retorna 400 si faltan campos requeridos', async () => {
+  it('retorna 403 si un user normal intenta crear producto', async () => {
     const { accessToken } = await registerAndLogin();
+
+    const res = await request(app)
+      .post('/api/v1/products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send(validProduct);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('retorna 400 si faltan campos requeridos', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
 
     const res = await request(app)
       .post('/api/v1/products')
@@ -82,7 +100,7 @@ describe('POST /api/v1/products', () => {
 
 describe('GET /api/v1/products', () => {
   it('retorna solo productos activos para usuario anónimo', async () => {
-    const { accessToken } = await registerAndLogin();
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -106,7 +124,7 @@ describe('GET /api/v1/products', () => {
   });
 
   it('ignora ?status=inactive para usuario anónimo y retorna active', async () => {
-    const { accessToken } = await registerAndLogin();
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -127,7 +145,7 @@ describe('GET /api/v1/products', () => {
 
 describe('GET /api/v1/products/:id', () => {
   it('retorna producto activo para usuario anónimo', async () => {
-    const { accessToken } = await registerAndLogin();
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -141,7 +159,7 @@ describe('GET /api/v1/products/:id', () => {
   });
 
   it('retorna 404 para producto inactivo sin autenticación', async () => {
-    const { accessToken } = await registerAndLogin();
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -157,8 +175,8 @@ describe('GET /api/v1/products/:id', () => {
     expect(res.status).toBe(404);
   });
 
-  it('retorna producto inactivo para su propio seller', async () => {
-    const { accessToken } = await registerAndLogin();
+  it('retorna 404 para un user normal al consultar un producto inactivo', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -169,9 +187,46 @@ describe('GET /api/v1/products/:id', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ status: 'inactive' });
 
+    const { accessToken: userToken } = await registerAndLogin(
+      {
+        name: 'Plain User',
+        email: 'plain-user-view@example.com',
+        password: 'Password1',
+      },
+      'user',
+    );
+
     const res = await request(app)
       .get(`/api/v1/products/${productId}`)
-      .set('Authorization', `Bearer ${accessToken}`);
+      .set('Authorization', `Bearer ${userToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('retorna producto inactivo para superadmin', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
+    const createRes = await request(app)
+      .post('/api/v1/products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send(validProduct);
+    const productId = createRes.body.data.id;
+    await request(app)
+      .patch(`/api/v1/products/${productId}`)
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ status: 'inactive' });
+
+    const { accessToken: superadminToken } = await registerAndLogin(
+      {
+        name: 'Super Admin',
+        email: 'superadmin@example.com',
+        password: 'Password1',
+      },
+      'superadmin',
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/products/${productId}`)
+      .set('Authorization', `Bearer ${superadminToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('inactive');
@@ -186,8 +241,8 @@ describe('PATCH /api/v1/products/:id', () => {
     expect(res.status).toBe(401);
   });
 
-  it('actualiza producto del seller autenticado', async () => {
-    const { accessToken } = await registerAndLogin();
+  it('actualiza producto con token admin autenticado', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -203,8 +258,8 @@ describe('PATCH /api/v1/products/:id', () => {
     expect(res.body.data.name).toBe('Updated Name');
   });
 
-  it('retorna 403 si otro usuario intenta actualizar el producto', async () => {
-    const { accessToken } = await registerAndLogin();
+  it('retorna 403 si un user normal intenta actualizar el producto', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -224,6 +279,31 @@ describe('PATCH /api/v1/products/:id', () => {
 
     expect(res.status).toBe(403);
   });
+  it('permite a otro admin actualizar el producto', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
+    const createRes = await request(app)
+      .post('/api/v1/products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send(validProduct);
+    const productId = createRes.body.data.id;
+
+    const { accessToken: otherAdminToken } = await registerAndLogin(
+      {
+        name: 'Other Admin',
+        email: 'other-admin@example.com',
+        password: 'Password1',
+      },
+      'admin',
+    );
+
+    const res = await request(app)
+      .patch(`/api/v1/products/${productId}`)
+      .set('Authorization', `Bearer ${otherAdminToken}`)
+      .send({ name: 'Updated By Another Admin' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.name).toBe('Updated By Another Admin');
+  });
 });
 
 describe('DELETE /api/v1/products/:id', () => {
@@ -233,7 +313,7 @@ describe('DELETE /api/v1/products/:id', () => {
   });
 
   it('elimina el producto y retorna 204', async () => {
-    const { accessToken } = await registerAndLogin();
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
     const createRes = await request(app)
       .post('/api/v1/products')
       .set('Authorization', `Bearer ${accessToken}`)
@@ -245,5 +325,29 @@ describe('DELETE /api/v1/products/:id', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(204);
+  });
+
+  it('retorna 403 si un user normal intenta eliminar el producto', async () => {
+    const { accessToken } = await registerAndLogin(sellerData, 'admin');
+    const createRes = await request(app)
+      .post('/api/v1/products')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send(validProduct);
+    const productId = createRes.body.data.id;
+
+    const { accessToken: userToken } = await registerAndLogin(
+      {
+        name: 'Plain User',
+        email: 'plain-user@example.com',
+        password: 'Password1',
+      },
+      'user',
+    );
+
+    const res = await request(app)
+      .delete(`/api/v1/products/${productId}`)
+      .set('Authorization', `Bearer ${userToken}`);
+
+    expect(res.status).toBe(403);
   });
 });

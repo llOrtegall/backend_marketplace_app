@@ -95,7 +95,7 @@ describe('ListProductsUseCase', () => {
     expect(result.items).toHaveLength(1);
   });
 
-  it('seller autenticado solo ve sus propios productos inactivos', async () => {
+  it('user autenticado no puede ver productos inactivos aunque sea seller', async () => {
     const result = await useCase.execute({
       filters: { status: 'inactive' },
       pagination: defaultPagination,
@@ -103,7 +103,6 @@ describe('ListProductsUseCase', () => {
       requesterRole: 'user',
     });
 
-    expect(result.items.every((p) => p.status === 'inactive')).toBe(true);
-    expect(result.items.every((p) => p.sellerId === 'seller-1')).toBe(true);
+    expect(result.items.every((p) => p.status === 'active')).toBe(true);
   });
 });

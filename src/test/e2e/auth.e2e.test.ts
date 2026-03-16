@@ -8,6 +8,7 @@ import {
 } from 'bun:test';
 import request from 'supertest';
 import { createApp } from '../../app';
+import { UserModel } from '../../infrastructure/user/UserSchema';
 import { clearDB, startTestDB, stopTestDB } from './setup';
 
 const app = createApp();
@@ -105,6 +106,34 @@ describe('POST /api/v1/auth/login', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });
+
+  it('retorna 403 si el usuario está inactivo', async () => {
+    await UserModel.updateOne(
+      { email: validUser.email },
+      { $set: { status: 'inactive' } },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
+  });
+
+  it('retorna 403 si el usuario está baneado', async () => {
+    await UserModel.updateOne(
+      { email: validUser.email },
+      { $set: { status: 'banned' } },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
+  });
 });
 
 describe('POST /api/v1/auth/refresh', () => {
@@ -130,6 +159,25 @@ describe('POST /api/v1/auth/refresh', () => {
 
     expect(res.status).toBe(401);
   });
+
+  it('retorna 403 si el usuario fue inactivado después del login', async () => {
+    await request(app).post('/api/v1/auth/register').send(validUser);
+    const loginRes = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+
+    await UserModel.updateOne(
+      { email: validUser.email },
+      { $set: { status: 'inactive' } },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/auth/refresh')
+      .send({ refreshToken: loginRes.body.data.refreshToken });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
+  });
 });
 
 describe('POST /api/v1/auth/logout', () => {
@@ -154,5 +202,26 @@ describe('POST /api/v1/auth/logout', () => {
       .send({ refreshToken: 'any' });
 
     expect(res.status).toBe(401);
+  });
+
+  it('retorna 403 si el usuario fue baneado después del login', async () => {
+    await request(app).post('/api/v1/auth/register').send(validUser);
+    const loginRes = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+    const { accessToken, refreshToken } = loginRes.body.data;
+
+    await UserModel.updateOne(
+      { email: validUser.email },
+      { $set: { status: 'banned' } },
+    );
+
+    const res = await request(app)
+      .post('/api/v1/auth/logout')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ refreshToken });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
   });
 });

@@ -33,44 +33,44 @@ describe('DeleteProductUseCase', () => {
     useCase = new DeleteProductUseCase(repo);
   });
 
-  it("hace soft delete de producto activo (status → 'deleted')", async () => {
+  it("admin hace soft delete de producto activo (status → 'deleted')", async () => {
     await useCase.execute({
       productId: 'active-1',
       requesterId: 'seller-1',
-      requesterRole: 'user',
+      requesterRole: 'admin',
     });
 
     const updated = repo.updatedProducts[0];
     expect(updated?.status).toBe('deleted');
   });
 
-  it('popula deletedAt al hacer el soft delete', async () => {
+  it('popula deletedAt cuando un admin hace soft delete', async () => {
     await useCase.execute({
       productId: 'active-1',
       requesterId: 'seller-1',
-      requesterRole: 'user',
+      requesterRole: 'admin',
     });
 
     const updated = repo.updatedProducts[0];
     expect(updated?.deletedAt).toBeInstanceOf(Date);
   });
 
-  it("permite soft delete desde 'inactive' (transición válida)", async () => {
+  it("permite a un admin hacer soft delete desde 'inactive'", async () => {
     await useCase.execute({
       productId: 'inactive-1',
       requesterId: 'seller-1',
-      requesterRole: 'user',
+      requesterRole: 'admin',
     });
 
     const updated = repo.updatedProducts[0];
     expect(updated?.status).toBe('deleted');
   });
 
-  it('no retorna nada (void)', async () => {
+  it('retorna void cuando un admin elimina el producto', async () => {
     const result = await useCase.execute({
       productId: 'active-1',
       requesterId: 'seller-1',
-      requesterRole: 'user',
+      requesterRole: 'admin',
     });
 
     expect(result).toBeUndefined();
@@ -81,7 +81,7 @@ describe('DeleteProductUseCase', () => {
       useCase.execute({
         productId: 'no-existe',
         requesterId: 'seller-1',
-        requesterRole: 'user',
+        requesterRole: 'admin',
       }),
     ).rejects.toMatchObject({ code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
   });
@@ -91,12 +91,12 @@ describe('DeleteProductUseCase', () => {
       useCase.execute({
         productId: 'deleted-1',
         requesterId: 'seller-1',
-        requesterRole: 'user',
+        requesterRole: 'admin',
       }),
     ).rejects.toMatchObject({ code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
   });
 
-  it('lanza ForbiddenError PRODUCT_FORBIDDEN cuando el requesterId no es el seller', async () => {
+  it('lanza ForbiddenError PRODUCT_FORBIDDEN cuando el requester no es admin ni superadmin', async () => {
     await expect(
       useCase.execute({
         productId: 'active-1',

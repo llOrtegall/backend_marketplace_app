@@ -7,7 +7,11 @@ import {
   type MockRefreshTokenRepository,
   type MockUserRepository,
 } from '../../helpers/mockRepositories';
-import { makeInactiveUser, makeUser } from '../../helpers/userFixtures';
+import {
+  makeBannedUser,
+  makeInactiveUser,
+  makeUser,
+} from '../../helpers/userFixtures';
 
 describe('RefreshTokenUseCase', () => {
   let userRepo: MockUserRepository;
@@ -88,14 +92,27 @@ describe('RefreshTokenUseCase', () => {
     });
   });
 
-  it('lanza UnauthorizedError si el usuario está inactivo', async () => {
+  it('lanza AppError ACCOUNT_INACTIVE si el usuario está inactivo', async () => {
     const inactiveUser = makeInactiveUser({ id: 'inactive-1' });
     const token = await seedToken('inactive-1');
     userRepo = createMockUserRepository([inactiveUser]);
     useCase = new RefreshTokenUseCase(userRepo, tokenRepo);
 
     await expect(useCase.execute(token)).rejects.toMatchObject({
-      statusCode: 401,
+      code: 'ACCOUNT_INACTIVE',
+      statusCode: 403,
+    });
+  });
+
+  it('lanza AppError ACCOUNT_INACTIVE si el usuario está baneado', async () => {
+    const bannedUser = makeBannedUser({ id: 'banned-1' });
+    const token = await seedToken('banned-1');
+    userRepo = createMockUserRepository([bannedUser]);
+    useCase = new RefreshTokenUseCase(userRepo, tokenRepo);
+
+    await expect(useCase.execute(token)).rejects.toMatchObject({
+      code: 'ACCOUNT_INACTIVE',
+      statusCode: 403,
     });
   });
 });

@@ -20,10 +20,11 @@ export async function createProduct(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { sub: sellerId } = requireAuth(req);
+    const { sub: sellerId, role: requesterRole } = requireAuth(req);
     const product = await makeCreateProductUseCase().execute({
       ...req.body,
       sellerId,
+      requesterRole,
     });
     res.status(201).json({ success: true, data: toProductDTO(product) });
   } catch (err) {

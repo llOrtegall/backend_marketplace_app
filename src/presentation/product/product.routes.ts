@@ -3,6 +3,7 @@ import {
   authenticate,
   optionalAuthenticate,
 } from '../../shared/middleware/authenticate';
+import { authorize } from '../../shared/middleware/authorize';
 import { validate } from '../../shared/middleware/validate';
 import {
   createProduct,
@@ -29,13 +30,20 @@ productRouter.get('/:id', optionalAuthenticate, getProduct);
 productRouter.post(
   '/',
   authenticate,
+  authorize('admin', 'superadmin'),
   validate(createProductSchema),
   createProduct,
 );
 productRouter.patch(
   '/:id',
   authenticate,
+  authorize('admin', 'superadmin'),
   validate(updateProductSchema),
   updateProduct,
 );
-productRouter.delete('/:id', authenticate, deleteProduct);
+productRouter.delete(
+  '/:id',
+  authenticate,
+  authorize('admin', 'superadmin'),
+  deleteProduct,
+);

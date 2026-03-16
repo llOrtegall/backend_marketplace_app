@@ -8,6 +8,7 @@ import {
 } from 'bun:test';
 import request from 'supertest';
 import { createApp } from '../../app';
+import { UserModel } from '../../infrastructure/user/UserSchema';
 import { clearDB, startTestDB, stopTestDB } from './setup';
 
 const app = createApp();
@@ -49,8 +50,12 @@ const validProduct = {
 
 async function registerAndLogin(
   userData: { name: string; email: string; password: string } = buyerData,
+  role: 'user' | 'admin' | 'superadmin' = 'user',
 ): Promise<{ accessToken: string; refreshToken: string }> {
   await request(app).post('/api/v1/auth/register').send(userData);
+  if (role !== 'user') {
+    await UserModel.updateOne({ email: userData.email }, { $set: { role } });
+  }
   const res = await request(app)
     .post('/api/v1/auth/login')
     .send({ email: userData.email, password: userData.password });
@@ -114,7 +119,10 @@ describe('POST /api/v1/orders', () => {
   });
 
   it('crea orden exitosamente y retorna 201 con los datos correctos', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -184,7 +192,10 @@ describe('POST /api/v1/orders', () => {
   });
 
   it('retorna 422 si el stock es insuficiente', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken, { stock: 1 });
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -192,6 +203,24 @@ describe('POST /api/v1/orders', () => {
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe('INSUFFICIENT_STOCK');
+  });
+  it('retorna 403 si el buyer fue inactivado después del login', async () => {
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
+    const productId = await createProduct(sellerToken);
+
+    const { accessToken: buyerToken } = await registerAndLogin(buyerData);
+    await UserModel.updateOne(
+      { email: buyerData.email },
+      { $set: { status: 'inactive' } },
+    );
+
+    const res = await createOrder(buyerToken, productId);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ACCOUNT_INACTIVE');
   });
 });
 
@@ -207,7 +236,10 @@ describe('GET /api/v1/orders', () => {
   });
 
   it('retorna las órdenes del usuario autenticado con paginación', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -228,7 +260,10 @@ describe('GET /api/v1/orders', () => {
   });
 
   it('un usuario solo ve sus propias órdenes, no las de otro usuario', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -265,7 +300,10 @@ describe('GET /api/v1/orders/:id', () => {
   });
 
   it('retorna 200 con la orden del usuario autenticado', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -283,7 +321,10 @@ describe('GET /api/v1/orders/:id', () => {
   });
 
   it('retorna 403 si otro usuario intenta acceder a la orden', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -323,7 +364,10 @@ describe('PATCH /api/v1/orders/:id/cancel', () => {
   });
 
   it('cancela la orden y retorna 204', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -338,7 +382,10 @@ describe('PATCH /api/v1/orders/:id/cancel', () => {
   });
 
   it('retorna 403 si otro usuario intenta cancelar la orden', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);
@@ -355,7 +402,10 @@ describe('PATCH /api/v1/orders/:id/cancel', () => {
   });
 
   it('retorna 422 si la orden ya está CANCELLED (doble cancelación)', async () => {
-    const { accessToken: sellerToken } = await registerAndLogin(sellerData);
+    const { accessToken: sellerToken } = await registerAndLogin(
+      sellerData,
+      'admin',
+    );
     const productId = await createProduct(sellerToken);
 
     const { accessToken: buyerToken } = await registerAndLogin(buyerData);

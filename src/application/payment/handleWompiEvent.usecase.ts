@@ -3,6 +3,7 @@ import type { IOrderRepository } from '../../domain/order/OrderRepository';
 import type { IPaymentRepository } from '../../domain/payment/PaymentRepository';
 import type { IProductRepository } from '../../domain/product/ProductRepository';
 import type { WompiTransactionData } from '../../domain/payment/PaymentGateway';
+import type { ConfirmOrderUseCase } from '../order/confirmOrder.usecase';
 import { NotFoundError } from '../../shared/errors/AppError';
 
 export class HandleWompiEventUseCase {
@@ -10,6 +11,7 @@ export class HandleWompiEventUseCase {
     private readonly paymentRepo: IPaymentRepository,
     private readonly orderRepo: IOrderRepository,
     private readonly productRepo: IProductRepository,
+    private readonly confirmOrder: ConfirmOrderUseCase,
     private readonly txManager: ITransactionManager,
   ) {}
 
@@ -42,32 +44,16 @@ export class HandleWompiEventUseCase {
         );
 
       if (updatedPayment.isApproved()) {
-        // Deduct stock for each item and confirm order
+        await this.confirmOrder.execute({ orderId: order.id, session });
+      } else if (updatedPayment.isTerminal()) {
+        // DECLINED, VOIDED, ERROR → restaurar stock y cancelar orden
         for (const item of order.items) {
-          const product = await this.productRepo.findById(
+          await this.productRepo.restoreStock(
             item.productId,
+            item.quantity,
             session,
           );
-          if (!product)
-            throw new NotFoundError(
-              'PRODUCT_NOT_FOUND',
-              `Product '${item.productId}' not found during stock deduction`,
-            );
-
-          if (product.stock < item.quantity) {
-            console.warn(
-              `[HandleWompiEvent] Stock inconsistency: product '${item.productId}' has stock=${product.stock} but order requires quantity=${item.quantity}. Deducting to 0.`,
-            );
-          }
-
-          const newStock = Math.max(0, product.stock - item.quantity);
-          const updatedProduct = product.update({ stock: newStock });
-          await this.productRepo.update(updatedProduct, session);
         }
-        const confirmedOrder = order.confirm();
-        await this.orderRepo.update(confirmedOrder, session);
-      } else if (updatedPayment.isTerminal()) {
-        // DECLINED, VOIDED, ERROR → cancel order
         const cancelledOrder = order.cancel();
         await this.orderRepo.update(cancelledOrder, session);
       }

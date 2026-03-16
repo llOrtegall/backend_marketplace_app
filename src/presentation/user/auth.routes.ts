@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../../shared/middleware/authenticate';
+import { authenticate } from '../../shared/middleware/middlewareInstances';
 import { authRateLimiter } from '../../shared/middleware/rateLimiter';
 import { validate } from '../../shared/middleware/validate';
 import { login, logout, refreshToken, register } from './auth.controller';

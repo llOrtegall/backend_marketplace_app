@@ -168,6 +168,20 @@ export function createMockProductRepository(
       store.set(product.id, product);
       updatedProducts.push(product);
     },
+    async decrementStockIfAvailable(productId, quantity) {
+      const product = store.get(productId);
+      if (!product || product.status !== 'active' || product.stock < quantity)
+        return null;
+      const updated = product.update({ stock: product.stock - quantity });
+      store.set(productId, updated);
+      return updated;
+    },
+    async restoreStock(productId, quantity) {
+      const product = store.get(productId);
+      if (!product) return;
+      const updated = product.update({ stock: product.stock + quantity });
+      store.set(productId, updated);
+    },
   };
 }
 
@@ -213,11 +227,11 @@ export function createMockOrderRepository(
         totalPages: Math.ceil(items.length / pagination.limit),
       };
     },
-    async save(order) {
+    async save(order, _session?) {
       store.set(order.id, order);
       savedOrders.push(order);
     },
-    async update(order) {
+    async update(order, _session?) {
       store.set(order.id, order);
       updatedOrders.push(order);
     },

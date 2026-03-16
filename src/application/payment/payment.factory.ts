@@ -4,6 +4,7 @@ import { WompiGateway } from '../../infrastructure/payment/WompiGateway';
 import { MongoProductRepository } from '../../infrastructure/product/MongoProductRepository';
 import { MongoTransactionManager } from '../../infrastructure/shared/MongoTransactionManager';
 import { MongoUserRepository } from '../../infrastructure/user/MongoUserRepository';
+import { ConfirmOrderUseCase } from '../order/confirmOrder.usecase';
 import { GetPaymentUseCase } from './getPayment.usecase';
 import { HandleWompiEventUseCase } from './handleWompiEvent.usecase';
 import { InitiatePaymentUseCase } from './initiatePayment.usecase';
@@ -24,7 +25,15 @@ export const makeInitiatePaymentUseCase = () =>
     txManager,
   );
 
+const confirmOrderUseCase = new ConfirmOrderUseCase(orderRepo);
+
 export const makeHandleWompiEventUseCase = () =>
-  new HandleWompiEventUseCase(paymentRepo, orderRepo, productRepo, txManager);
+  new HandleWompiEventUseCase(
+    paymentRepo,
+    orderRepo,
+    productRepo,
+    confirmOrderUseCase,
+    txManager,
+  );
 
 export const makeGetPaymentUseCase = () => new GetPaymentUseCase(paymentRepo);

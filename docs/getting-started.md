@@ -63,7 +63,16 @@ Tests use a separate `.env.test` file and an in-memory MongoDB instance — no e
 
 ```bash
 # Run all tests
-bun test
+bun run test
+
+# Run unit/application suites in parallel by domain
+bun run test:unit
+
+# Run end-to-end suite serially
+bun run test:e2e
+
+# Run full suite with dots reporter
+bun run test:dots
 
 # Watch mode (re-runs on file changes)
 bun test --watch
@@ -75,7 +84,7 @@ bun test --coverage
 bun test src/test/e2e/orders.e2e.test.ts --env-file .env.test
 ```
 
-> Git hooks automatically run `lint-staged + bun test` on pre-commit and `bun test` on pre-push.
+> Git hooks are managed by `simple-git-hooks` and automatically run `lint-staged + bun run test` on pre-commit and `bun run test` on pre-push.
 
 ---
 

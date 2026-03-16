@@ -103,6 +103,6 @@ Tests are end-to-end at the HTTP layer, hitting real use cases and a real (in-me
 | Tool | Role |
 |------|------|
 | [Morgan](https://github.com/expressjs/morgan) | HTTP request logging in development |
-| [Husky](https://typicode.github.io/husky) | Git hooks — runs lint + tests before commit and push |
+| [simple-git-hooks](https://github.com/toplenboren/simple-git-hooks) | Git hooks — runs `lint-staged + bun run test` on pre-commit and `bun run test` on pre-push |
 | lint-staged | Runs Biome only on staged files for fast pre-commit checks |
 | TypeScript | Strict types across the entire codebase |

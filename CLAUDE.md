@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 bun run dev          # Start development server with hot reload
-bun test             # Run all tests (uses .env.test)
+bun run test         # Run all tests (parallel unit/application + serial e2e)
+bun run test:dots    # Run all tests with dots reporter
+bun run test:unit    # Run unit/application suites in parallel by domain
+bun run test:e2e     # Run end-to-end tests serially
 bun test --watch     # Run tests in watch mode
 bun test --coverage  # Run tests with coverage report
 bun run lint         # Lint and auto-fix with Biome
@@ -18,7 +21,7 @@ Run a single test file:
 bun test src/test/path/to/file.test.ts --env-file .env.test
 ```
 
-Git hooks run `lint-staged` + `bun test` on pre-commit and `bun test` on pre-push.
+Git hooks are managed by `simple-git-hooks` and run `lint-staged` + `bun run test` on pre-commit and `bun run test` on pre-push.
 
 ## Architecture
 

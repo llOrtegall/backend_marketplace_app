@@ -7,6 +7,7 @@ import {
   type MockOrderRepository,
   type MockProductRepository,
 } from '../../helpers/mockRepositories';
+import { createMockTransactionManager } from '../../helpers/mockTransactionManager';
 import {
   makeProduct,
   makeInactiveProduct,
@@ -29,7 +30,11 @@ describe('CreateOrderUseCase', () => {
   beforeEach(() => {
     orderRepo = createMockOrderRepository();
     productRepo = createMockProductRepository([productActivo]);
-    useCase = new CreateOrderUseCase(orderRepo, productRepo);
+    useCase = new CreateOrderUseCase(
+      orderRepo,
+      productRepo,
+      createMockTransactionManager(),
+    );
   });
 
   it('crea una orden con status PENDING', async () => {
@@ -81,6 +86,16 @@ describe('CreateOrderUseCase', () => {
     });
 
     expect(o1.id).not.toBe(o2.id);
+  });
+
+  it('decrementa el stock del producto al crear la orden', async () => {
+    await useCase.execute({
+      buyerId: 'buyer-1',
+      items: [{ productId: 'product-1', quantity: 3 }],
+    });
+
+    const product = productRepo._store.get('product-1');
+    expect(product?.stock).toBe(7);
   });
 
   it('lanza UnprocessableError ORDER_EMPTY si items está vacío', async () => {

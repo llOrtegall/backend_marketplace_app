@@ -3,19 +3,33 @@ import { CancelOrderUseCase } from '../../../application/order/cancelOrder.useca
 import { NotFoundError } from '../../../shared/errors/AppError';
 import {
   createMockOrderRepository,
+  createMockProductRepository,
   type MockOrderRepository,
 } from '../../helpers/mockRepositories';
+import { createMockTransactionManager } from '../../helpers/mockTransactionManager';
 import { makeOrder, makeOrderWithStatus } from '../../helpers/orderFixtures';
+import { makeProduct } from '../../helpers/productFixtures';
+import { Stock } from '../../../domain/product/ProductValueObjects';
 
 describe('CancelOrderUseCase', () => {
   let repo: MockOrderRepository;
   let useCase: CancelOrderUseCase;
 
+  const product = makeProduct({
+    id: 'product-1',
+    stock: Stock.create(8),
+    status: 'active',
+  });
   const ordenPending = makeOrder({ id: 'order-1', buyerId: 'buyer-1' });
 
   beforeEach(() => {
     repo = createMockOrderRepository([ordenPending]);
-    useCase = new CancelOrderUseCase(repo);
+    const productRepo = createMockProductRepository([product]);
+    useCase = new CancelOrderUseCase(
+      repo,
+      productRepo,
+      createMockTransactionManager(),
+    );
   });
 
   it('cancela la orden cuando el requester es el buyer', async () => {
@@ -60,6 +74,24 @@ describe('CancelOrderUseCase', () => {
 
     expect(repo.updatedOrders).toHaveLength(1);
     expect(repo.updatedOrders.at(0)?.status).toBe('CANCELLED');
+  });
+
+  it('restaura el stock del producto al cancelar una orden PENDING', async () => {
+    const productRepo = createMockProductRepository([product]);
+    const localUseCase = new CancelOrderUseCase(
+      repo,
+      productRepo,
+      createMockTransactionManager(),
+    );
+
+    await localUseCase.execute({
+      orderId: 'order-1',
+      requesterId: 'buyer-1',
+      requesterRole: 'user',
+    });
+
+    const updatedProduct = productRepo._store.get('product-1');
+    expect(updatedProduct?.stock).toBe(10); // 8 + 2 (quantity from fixture)
   });
 
   it('lanza NotFoundError ORDER_NOT_FOUND si la orden no existe', async () => {

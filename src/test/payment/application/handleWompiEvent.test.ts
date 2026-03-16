@@ -1,21 +1,17 @@
 import { beforeEach, describe, expect, it } from 'bun:test';
+import { ConfirmOrderUseCase } from '../../../application/order/confirmOrder.usecase';
 import { HandleWompiEventUseCase } from '../../../application/payment/handleWompiEvent.usecase';
-import type { ITransactionManager } from '../../../application/shared/ITransactionManager';
 import type { WompiTransactionData } from '../../../domain/payment/PaymentGateway';
-import type { Product } from '../../../domain/product/Product';
-import type {
-  IProductRepository,
-  PaginatedResult,
-  PaginationOptions,
-  ProductFilters,
-} from '../../../domain/product/ProductRepository';
 import { NotFoundError } from '../../../shared/errors/AppError';
 import {
   createMockOrderRepository,
   createMockPaymentRepository,
+  createMockProductRepository,
   type MockOrderRepository,
   type MockPaymentRepository,
+  type MockProductRepository,
 } from '../../helpers/mockRepositories';
+import { createMockTransactionManager } from '../../helpers/mockTransactionManager';
 import { makeOrderWithStatus } from '../../helpers/orderFixtures';
 import {
   makeApprovedPayment,
@@ -24,50 +20,6 @@ import {
 } from '../../helpers/paymentFixtures';
 import { makeProduct } from '../../helpers/productFixtures';
 import { Stock } from '../../../domain/product/ProductValueObjects';
-
-// ─── Mock de ITransactionManager ──────────────────────────────────────────────
-
-function createMockTransactionManager(): ITransactionManager {
-  return {
-    async runInTransaction(fn) {
-      return fn(null as unknown);
-    },
-  };
-}
-
-// ─── Mock de ProductRepository (extendido con update y tracking) ──────────────
-
-interface MockProductRepo extends IProductRepository {
-  _store: Map<string, Product>;
-  updatedProducts: Product[];
-}
-
-function createMockProductRepo(seed: Product[] = []): MockProductRepo {
-  const store = new Map(seed.map((p) => [p.id, p]));
-  const updatedProducts: Product[] = [];
-
-  return {
-    _store: store,
-    updatedProducts,
-
-    async findById(id) {
-      return store.get(id) ?? null;
-    },
-    async findAll(
-      _filters: ProductFilters,
-      _pagination: PaginationOptions,
-    ): Promise<PaginatedResult<Product>> {
-      return { items: [], total: 0, page: 1, limit: 10, totalPages: 0 };
-    },
-    async save(product) {
-      store.set(product.id, product);
-    },
-    async update(product) {
-      store.set(product.id, product);
-      updatedProducts.push(product);
-    },
-  };
-}
 
 // ─── Helpers de datos de prueba ───────────────────────────────────────────────
 
@@ -90,13 +42,13 @@ function makeTxData(
 describe('HandleWompiEventUseCase', () => {
   let paymentRepo: MockPaymentRepository;
   let orderRepo: MockOrderRepository;
-  let productRepo: MockProductRepo;
-  let txManager: ITransactionManager;
+  let productRepo: MockProductRepository;
   let useCase: HandleWompiEventUseCase;
 
+  // El producto ya tiene stock decrementado (createOrder lo hizo antes)
   const producto = makeProduct({
     id: 'product-1',
-    stock: Stock.create(10),
+    stock: Stock.create(8),
     status: 'active',
   });
 
@@ -114,13 +66,14 @@ describe('HandleWompiEventUseCase', () => {
   beforeEach(() => {
     paymentRepo = createMockPaymentRepository([pago]);
     orderRepo = createMockOrderRepository([orden]);
-    productRepo = createMockProductRepo([producto]);
-    txManager = createMockTransactionManager();
+    productRepo = createMockProductRepository([producto]);
+    const confirmOrder = new ConfirmOrderUseCase(orderRepo);
     useCase = new HandleWompiEventUseCase(
       paymentRepo,
       orderRepo,
       productRepo,
-      txManager,
+      confirmOrder,
+      createMockTransactionManager(),
     );
   });
 
@@ -143,14 +96,13 @@ describe('HandleWompiEventUseCase', () => {
       expect(ordenActualizada?.status).toBe('CONFIRMED');
     });
 
-    it('descuenta el stock de los productos cuando el pago es APPROVED', async () => {
+    it('no modifica el stock cuando el pago es APPROVED (ya fue decrementado en createOrder)', async () => {
       await useCase.execute(
         makeTxData({ status: 'APPROVED', reference: 'payment-1' }),
       );
 
       const productoActualizado = productRepo._store.get('product-1');
-      // La orden tiene 2 unidades de product-1 (del fixture base de makeOrderWithStatus)
-      expect(productoActualizado?.stock).toBeLessThan(10);
+      expect(productoActualizado?.stock).toBe(8);
     });
 
     it('llama a update en paymentRepo', async () => {
@@ -202,13 +154,13 @@ describe('HandleWompiEventUseCase', () => {
       expect(ordenActualizada?.status).toBe('CANCELLED');
     });
 
-    it('no descuenta stock cuando el pago es DECLINED', async () => {
+    it('restaura el stock cuando el pago es DECLINED', async () => {
       await useCase.execute(
         makeTxData({ status: 'DECLINED', reference: 'payment-1' }),
       );
 
       const productoActualizado = productRepo._store.get('product-1');
-      expect(productoActualizado?.stock).toBe(10);
+      expect(productoActualizado?.stock).toBe(10); // 8 + 2 (quantity del fixture)
     });
   });
 
@@ -263,7 +215,6 @@ describe('HandleWompiEventUseCase', () => {
         makeTxData({ status: 'DECLINED', reference: 'payment-terminal' }),
       );
 
-      // El pago no debe cambiar a DECLINED
       const pagoFinal = paymentRepo._store.get('payment-terminal');
       expect(pagoFinal?.status).toBe('APPROVED');
     });

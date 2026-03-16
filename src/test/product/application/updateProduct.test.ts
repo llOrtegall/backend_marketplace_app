@@ -22,22 +22,10 @@ describe('UpdateProductUseCase', () => {
     useCase = new UpdateProductUseCase(repo);
   });
 
-  it('rechaza actualización cuando el requester es un user normal', async () => {
-    await expect(
-      useCase.execute({
-        productId: 'product-1',
-        requesterId: 'seller-1',
-        requesterRole: 'user',
-        name: 'Nuevo Nombre',
-      }),
-    ).rejects.toMatchObject({ code: 'PRODUCT_FORBIDDEN', statusCode: 403 });
-  });
-
   it('update parcial preserva los campos no modificados', async () => {
     const updated = await useCase.execute({
       productId: 'product-1',
       requesterId: 'seller-1',
-      requesterRole: 'admin',
       name: 'Nuevo Nombre',
     });
 
@@ -50,7 +38,6 @@ describe('UpdateProductUseCase', () => {
     await useCase.execute({
       productId: 'product-1',
       requesterId: 'seller-1',
-      requesterRole: 'admin',
       name: 'Actualizado',
     });
 
@@ -62,7 +49,6 @@ describe('UpdateProductUseCase', () => {
       useCase.execute({
         productId: 'no-existe',
         requesterId: 'seller-1',
-        requesterRole: 'admin',
         name: 'X',
       }),
     ).rejects.toMatchObject({ code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
@@ -73,43 +59,9 @@ describe('UpdateProductUseCase', () => {
       useCase.execute({
         productId: 'deleted-1',
         requesterId: 'seller-1',
-        requesterRole: 'admin',
         name: 'X',
       }),
     ).rejects.toMatchObject({ code: 'PRODUCT_NOT_FOUND', statusCode: 404 });
-  });
-
-  it('lanza ForbiddenError PRODUCT_FORBIDDEN cuando el requester no es admin ni superadmin', async () => {
-    await expect(
-      useCase.execute({
-        productId: 'product-1',
-        requesterId: 'otro-seller',
-        requesterRole: 'user',
-        name: 'Hack',
-      }),
-    ).rejects.toMatchObject({ code: 'PRODUCT_FORBIDDEN', statusCode: 403 });
-  });
-
-  it('admin puede actualizar producto que no es suyo', async () => {
-    const updated = await useCase.execute({
-      productId: 'product-1',
-      requesterId: 'admin-user',
-      requesterRole: 'admin',
-      name: 'Actualizado por Admin',
-    });
-
-    expect(updated.name).toBe('Actualizado por Admin');
-  });
-
-  it('superadmin puede actualizar producto que no es suyo', async () => {
-    const updated = await useCase.execute({
-      productId: 'product-1',
-      requesterId: 'superadmin-user',
-      requesterRole: 'superadmin',
-      name: 'Actualizado por SuperAdmin',
-    });
-
-    expect(updated.name).toBe('Actualizado por SuperAdmin');
   });
 
   it('lanza UnprocessableError si el nuevo precio es inválido', async () => {
@@ -117,7 +69,6 @@ describe('UpdateProductUseCase', () => {
       useCase.execute({
         productId: 'product-1',
         requesterId: 'seller-1',
-        requesterRole: 'admin',
         price: -1,
       }),
     ).rejects.toThrow(UnprocessableError);
@@ -128,7 +79,6 @@ describe('UpdateProductUseCase', () => {
       .execute({
         productId: 'product-1',
         requesterId: 'seller-1',
-        requesterRole: 'admin',
         price: 0,
       })
       .catch(() => {});
